@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { signIn, getProviders } from 'next-auth/react'
+import { signIn, getProviders, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n, LanguageSwitcher } from '@/components/I18nProvider'
@@ -28,6 +28,7 @@ const OAuthStyles: Record<string, { bg: string; hover: string; text: string }> =
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: session, status } = useSession()
   const { t, locale } = useI18n()
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
@@ -41,6 +42,13 @@ function LoginForm() {
   const [sendingCode, setSendingCode] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [codeExpiresIn, setCodeExpiresIn] = useState(0)
+
+  // 如果已登录，跳转到首页
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.replace('/')
+    }
+  }, [session, status, router])
 
   useEffect(() => {
     getProviders().then((p) => {
@@ -151,8 +159,8 @@ function LoginForm() {
         if (result?.error) {
           setError(result.error)
         } else {
-          router.push('/')
-          router.refresh()
+          // 使用 window.location 强制刷新，确保 session 正确加载
+          window.location.href = '/'
         }
       } else {
         const result = await signIn('credentials', {
@@ -164,8 +172,7 @@ function LoginForm() {
         if (result?.error) {
           setError(result.error)
         } else {
-          router.push('/')
-          router.refresh()
+          window.location.href = '/'
         }
       }
     } catch (err) {
