@@ -24,7 +24,7 @@ services:
     container_name: kigurumi-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - DATABASE_URL=postgresql://kigurumi:${DB_PASSWORD:-kigurumi123}@postgres:5432/kigurumi_map
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}

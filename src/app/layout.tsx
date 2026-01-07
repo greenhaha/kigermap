@@ -41,25 +41,20 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className="antialiased">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        {/* 使用国内 CDN */}
         <link
           rel="stylesheet"
-          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          href="https://cdn.bootcdn.net/ajax/libs/leaflet/1.9.4/leaflet.min.css"
           crossOrigin=""
         />
         <link
           rel="stylesheet"
-          href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+          href="https://cdn.bootcdn.net/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"
           crossOrigin=""
         />
         <link
           rel="stylesheet"
-          href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+          href="https://cdn.bootcdn.net/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"
           crossOrigin=""
         />
       </head>
