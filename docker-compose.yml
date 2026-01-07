@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kigurumi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kigurumi
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-kigurumi123}
+      POSTGRES_DB: kigurumi_map
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kigurumi -d kigurumi_map"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kigurumi-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://kigurumi:${DB_PASSWORD:-kigurumi123}@postgres:5432/kigurumi_map
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
+      - OSS_REGION=${OSS_REGION}
+      - OSS_BUCKET=${OSS_BUCKET}
+      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}
+      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}
+      - QQ_CLIENT_ID=${QQ_CLIENT_ID}
+      - QQ_CLIENT_SECRET=${QQ_CLIENT_SECRET}
+      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID}
+      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY}
+      - TENCENT_SES_REGION=${TENCENT_SES_REGION}
+      - TENCENT_SES_FROM_EMAIL=${TENCENT_SES_FROM_EMAIL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 数据库迁移服务（一次性运行）
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kigurumi-migrate
+    environment:
+      - DATABASE_URL=postgresql://kigurumi:${DB_PASSWORD:-kigurumi123}@postgres:5432/kigurumi_map
+    command: npx prisma db push
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

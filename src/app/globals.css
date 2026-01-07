@@ -1,0 +1,549 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #8B5CF6;
+  --primary-light: #A78BFA;
+  --secondary: #EC4899;
+  --accent: #06B6D4;
+  --dark: #0F172A;
+  --glass: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+  min-height: 100vh;
+  color: #F8FAFC;
+  overflow-x: hidden;
+}
+
+/* 动态背景 */
+.bg-animated {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.bg-animated::before {
+  content: '';
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  top: -25%;
+  left: -25%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+  animation: bgFloat 20s ease-in-out infinite;
+}
+
+@keyframes bgFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, 2%) rotate(1deg); }
+  66% { transform: translate(-1%, 1%) rotate(-1deg); }
+}
+
+/* 玻璃态效果 */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 触摸友好 */
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* 地图容器 */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #1E293B;
+  z-index: 1;
+}
+
+/* 确保地图控件不会遮挡弹窗 */
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10;
+}
+
+.leaflet-control {
+  z-index: 10;
+}
+
+/* 地图弹窗层级 */
+.leaflet-popup-pane {
+  z-index: 20;
+}
+
+.leaflet-marker-pane {
+  z-index: 15;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #F8FAFC;
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+/* 卡片效果 */
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 25px 50px -12px rgba(139, 92, 246, 0.25),
+    0 0 0 1px rgba(139, 92, 246, 0.1);
+}
+
+/* 渐变按钮 */
+.btn-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #A78BFA 0%, #F472B6 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.btn-gradient:active {
+  transform: translateY(0);
+}
+
+/* 发光效果 */
+.glow {
+  box-shadow: 
+    0 0 20px rgba(139, 92, 246, 0.3),
+    0 0 40px rgba(139, 92, 246, 0.1);
+}
+
+.glow-pink {
+  box-shadow: 
+    0 0 20px rgba(236, 72, 153, 0.3),
+    0 0 40px rgba(236, 72, 153, 0.1);
+}
+
+/* 文字渐变 */
+.text-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 分享卡片 */
+.share-card {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+}
+
+/* 输入框样式 */
+.input-modern {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.input-modern:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* 动画 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.6); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 图片加载占位 */
+.img-skeleton {
+  background: linear-gradient(90deg, #1E293B 0%, #334155 50%, #1E293B 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .glass {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Marker Cluster 自定义样式 */
+.marker-cluster {
+  background: transparent !important;
+}
+
+.marker-cluster div {
+  background: transparent !important;
+}
+
+.marker-cluster span {
+  display: none !important;
+}
+
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 聚合动画 */
+.cluster-small, .cluster-medium, .cluster-large {
+  transition: transform 0.2s ease;
+}
+
+.cluster-small:hover, .cluster-medium:hover, .cluster-large:hover {
+  transform: scale(1.1);
+}
+
+/* 蜘蛛展开线条样式 */
+.leaflet-cluster-anim .leaflet-marker-icon, 
+.leaflet-cluster-anim .leaflet-marker-shadow {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+
+/* 自定义弹窗样式覆盖 */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: 280px !important;
+}
+
+.custom-popup .leaflet-popup-tip-container {
+  display: none !important;
+}
+
+.leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* 用户弹窗卡片样式 - 简洁美观 */
+.user-popup-card {
+  background: #0f172a;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  font-family: Inter, -apple-system, sans-serif;
+  width: 260px;
+}
+
+.user-popup-card .popup-photo {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #1e293b;
+}
+
+/* 轮播容器 */
+.user-popup-card .popup-slider {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.user-popup-card .popup-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.user-popup-card .popup-slide.active {
+  opacity: 1;
+}
+
+/* 轮播箭头 */
+.user-popup-card .popup-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(4px);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.user-popup-card .popup-arrow:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.user-popup-card .popup-arrow-left {
+  left: 10px;
+}
+
+.user-popup-card .popup-arrow-right {
+  right: 10px;
+}
+
+/* 轮播指示器 */
+.user-popup-card .popup-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.user-popup-card .popup-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.user-popup-card .popup-dot.active {
+  background: white;
+  width: 18px;
+  border-radius: 3px;
+}
+
+/* 信息区域 */
+.user-popup-card .popup-info {
+  padding: 16px;
+}
+
+.user-popup-card .popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.user-popup-card .popup-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #f8fafc;
+}
+
+.user-popup-card .popup-location {
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.user-popup-card .popup-intro {
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.7);
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.user-popup-card .popup-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  border-radius: 12px;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  box-sizing: border-box;
+  transition: all 0.2s;
+}
+
+.user-popup-card .popup-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.user-popup-card .popup-info {
+  padding: 14px;
+}
+
+.user-popup-card .popup-name {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #F8FAFC;
+}
+
+.user-popup-card .popup-location {
+  font-size: 12px;
+  color: rgba(248, 250, 252, 0.6);
+  margin: 0 0 10px 0;
+}
+
+.user-popup-card .popup-intro {
+  font-size: 13px;
+  color: rgba(248, 250, 252, 0.8);
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.user-popup-card .popup-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  border-radius: 10px;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.user-popup-card .popup-btn:hover {
+  opacity: 0.9;
+}

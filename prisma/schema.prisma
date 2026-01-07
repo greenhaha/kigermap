@@ -1,0 +1,81 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 账户表 - 用于登录
+model Account {
+  id            String   @id @default(cuid())
+  email         String?  @unique  // 第三方登录可能没有邮箱
+  password      String?           // 第三方登录没有密码
+  createdAt     DateTime @default(now())
+  
+  // 第三方登录关联
+  oauthAccounts OAuthAccount[]
+  
+  // 关联的 Kigurumi 资料
+  profile       KigurumiProfile?
+}
+
+// 第三方登录账户表
+model OAuthAccount {
+  id            String   @id @default(cuid())
+  provider      String   // qq, wechat, github 等
+  providerId    String   // 第三方平台的用户ID
+  nickname      String?  // 第三方平台昵称
+  avatar        String?  // 第三方平台头像
+  accessToken   String?  // 访问令牌
+  refreshToken  String?  // 刷新令牌
+  expiresAt     DateTime? // 令牌过期时间
+  createdAt     DateTime @default(now())
+  
+  // 关联主账户
+  accountId     String
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerId])
+  @@index([accountId])
+}
+
+// 邮箱验证码表
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// Kigurumi 资料表
+model KigurumiProfile {
+  id           String   @id @default(cuid())
+  cnName       String
+  introduction String
+  photos       String   // JSON array
+  lat          Float
+  lng          Float
+  country      String
+  province     String?
+  city         String?
+  socialLinks  String?  // JSON: { x, douyin, xiaohongshu, bilibili }
+  shareCode    String   @unique
+  ossFolder    String   // OSS 文件夹路径
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 关联账户
+  accountId    String   @unique
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([country])
+  @@index([province])
+  @@index([shareCode])
+}
