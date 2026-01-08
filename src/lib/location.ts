@@ -24,21 +24,58 @@ export function getCurrentPosition(): Promise<GeolocationPosition> {
 
 // IP 定位（不需要 HTTPS，精度较低但可作为备选）
 export async function getLocationByIP(): Promise<LocationInfo | null> {
+  // 创建超时控制
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒超时
+  
   try {
-    // 使用免费的 IP 定位服务
-    const res = await fetch('https://ipapi.co/json/')
-    if (!res.ok) return null
+    // 尝试多个 IP 定位服务
+    const services = [
+      'https://ipapi.co/json/',
+      'https://ip-api.com/json/?lang=zh-CN',
+    ]
     
-    const data = await res.json()
-    
-    return {
-      lat: data.latitude,
-      lng: data.longitude,
-      country: data.country_name || '未知',
-      province: data.region || '',
-      city: data.city || '',
+    for (const url of services) {
+      try {
+        const res = await fetch(url, { 
+          signal: controller.signal,
+        })
+        if (!res.ok) continue
+        
+        const data = await res.json()
+        
+        // ipapi.co 格式
+        if (data.latitude && data.longitude) {
+          clearTimeout(timeoutId)
+          return {
+            lat: data.latitude,
+            lng: data.longitude,
+            country: data.country_name || data.country || '未知',
+            province: data.region || data.regionName || '',
+            city: data.city || '',
+          }
+        }
+        
+        // ip-api.com 格式
+        if (data.lat && data.lon) {
+          clearTimeout(timeoutId)
+          return {
+            lat: data.lat,
+            lng: data.lon,
+            country: data.country || '未知',
+            province: data.regionName || '',
+            city: data.city || '',
+          }
+        }
+      } catch {
+        continue
+      }
     }
+    
+    clearTimeout(timeoutId)
+    return null
   } catch {
+    clearTimeout(timeoutId)
     return null
   }
 }
@@ -52,15 +89,21 @@ export async function getSmartLocation(): Promise<LocationInfo | null> {
   if (isSecureContext && navigator.geolocation) {
     try {
       const pos = await getCurrentPosition()
-      const location = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
-      return location
+      const loc = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+      return loc
     } catch (e) {
-      console.log('GPS 定位失败，尝试 IP 定位')
+      console.log('GPS 定位失败，尝试 IP 定位:', e)
     }
   }
   
   // 降级到 IP 定位
-  return getLocationByIP()
+  const ipLocation = await getLocationByIP()
+  if (ipLocation) {
+    return ipLocation
+  }
+  
+  // 都失败了，返回 null
+  return null
 }
 
 // 将坐标模糊化到县市级别（约 0.01 度 ≈ 1km）
