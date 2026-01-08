@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { normalizeCountry, normalizeProvince, isChineseProvince } from './location'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -21,6 +22,15 @@ export function toKigurumiUser(profile: any) {
     }
   }
   
+  // 标准化国家和省份名称
+  let country = normalizeCountry(profile.country || '')
+  let province = normalizeProvince(profile.province || '')
+  
+  // 如果省份是中国省份但国家不是中国，修正国家为中国
+  if (isChineseProvince(province) && country !== '中国') {
+    country = '中国'
+  }
+  
   return {
     id: profile.id,
     cnName: profile.cnName || '',
@@ -29,8 +39,8 @@ export function toKigurumiUser(profile: any) {
     location: {
       lat: profile.lat,
       lng: profile.lng,
-      country: profile.country || '',
-      province: profile.province || '',
+      country,
+      province,
       city: profile.city || '',
     },
     socialLinks,

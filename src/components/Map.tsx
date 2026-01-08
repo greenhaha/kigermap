@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
 import type { KigurumiUser } from '@/types'
+import type { Locale } from '@/lib/i18n'
 
 interface MapProps {
   users: KigurumiUser[]
@@ -10,6 +11,7 @@ interface MapProps {
   center?: [number, number]
   zoom?: number
   searchQuery?: string
+  locale?: Locale
 }
 
 export interface MapRef {
@@ -23,7 +25,8 @@ const Map = forwardRef<MapRef, MapProps>(({
   selectedUser,
   center = [35, 105], 
   zoom = 4,
-  searchQuery = ''
+  searchQuery = '',
+  locale = 'zh'
 }, ref) => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -33,8 +36,8 @@ const Map = forwardRef<MapRef, MapProps>(({
   const leafletRef = useRef<any>(null)
   const [isReady, setIsReady] = useState(false)
 
-  const MAX_ZOOM = 8  // 最大缩放到地级市/直辖市级别，不显示街道、城市内区域、乡镇等
-  const MIN_ZOOM = 2
+  const MAX_ZOOM = 10  // 最大缩放到地级市级别
+  const MIN_ZOOM = 3   // 最小缩放到国家级别
 
   useImperativeHandle(ref, () => ({
     flyToUser: (user: KigurumiUser) => {
@@ -106,18 +109,27 @@ const Map = forwardRef<MapRef, MapProps>(({
 
         L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-        // 使用 CartoDB Voyager 地图，显示国家、省份、城市标签，但不显示街道细节
-        // 底图层（无标签）
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-          maxZoom: MAX_ZOOM,
-          subdomains: 'abcd',
-        }).addTo(map)
-        
-        // 标签层（只显示到城市级别，通过 maxZoom 限制不显示街道标签）
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-          maxZoom: MAX_ZOOM,
-          subdomains: 'abcd',
-        }).addTo(map)
+        // 根据语言选择地图图层
+        // 使用简洁样式地图，只显示国家、省份、地级市标签，不显示乡镇、铁路等细节
+        if (locale === 'zh') {
+          // 高德地图简洁版 - style=7 是简洁样式，不显示POI和细节
+          L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
+            maxZoom: MAX_ZOOM,
+            subdomains: '1234',
+          }).addTo(map)
+        } else if (locale === 'ja') {
+          // 日语使用 CartoDB Positron（简洁样式）
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: MAX_ZOOM,
+            subdomains: 'abcd',
+          }).addTo(map)
+        } else {
+          // 英文及其他语言使用 CartoDB Positron（简洁样式，无铁路等细节）
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: MAX_ZOOM,
+            subdomains: 'abcd',
+          }).addTo(map)
+        }
 
         // 创建聚合图层 - 使用默认样式但自定义颜色
         markerClusterRef.current = (L as any).markerClusterGroup({
@@ -179,7 +191,7 @@ const Map = forwardRef<MapRef, MapProps>(({
       markerClusterRef.current = null
       setIsReady(false)
     }
-  }, [])
+  }, [locale])  // 当语言变化时重新初始化地图
 
   // 更新标记
   useEffect(() => {
@@ -223,19 +235,26 @@ const Map = forwardRef<MapRef, MapProps>(({
     }
 
     // 基于用户ID生成稳定的随机偏移（同一用户每次偏移相同）
-    const getStableOffset = (userId: string, index: number) => {
+    // 使用螺旋分布算法，让用户均匀分散在区域内
+    const getStableOffset = (userId: string, index: number, totalInGroup: number) => {
       // 使用简单的哈希算法生成稳定的伪随机数
       let hash = 0
       for (let i = 0; i < userId.length; i++) {
         hash = ((hash << 5) - hash) + userId.charCodeAt(i)
         hash = hash & hash
       }
-      // 基于哈希值生成 -1 到 1 之间的稳定随机数
-      const seed1 = Math.abs(Math.sin(hash + index)) 
-      const seed2 = Math.abs(Math.cos(hash + index))
+      
+      // 使用螺旋分布 + 随机偏移，让分布更均匀
+      const angle = (Math.abs(hash) % 360) * (Math.PI / 180)  // 基于hash的角度
+      const radiusBase = 0.3  // 基础半径约 30km
+      
+      // 根据组内人数动态调整半径，人越多分布越广
+      const radiusMultiplier = Math.min(1 + totalInGroup * 0.1, 2.5)
+      const radius = radiusBase * radiusMultiplier * (0.5 + Math.abs(Math.sin(hash)) * 0.5)
+      
       return {
-        latOffset: (seed1 - 0.5) * 0.15,  // 约 ±8km 的随机偏移
-        lngOffset: (seed2 - 0.5) * 0.15,
+        latOffset: Math.sin(angle) * radius,
+        lngOffset: Math.cos(angle) * radius,
       }
     }
 
@@ -243,8 +262,8 @@ const Map = forwardRef<MapRef, MapProps>(({
     const locationGroups = new globalThis.Map<string, typeof users>()
     users.forEach(user => {
       if (!user.location?.lat || !user.location?.lng) return
-      // 使用 0.1 度精度分组（约 10km 范围）
-      const groupKey = `${Math.round(user.location.lat * 10) / 10},${Math.round(user.location.lng * 10) / 10}`
+      // 使用 0.2 度精度分组（约 20km 范围）
+      const groupKey = `${Math.round(user.location.lat * 5) / 5},${Math.round(user.location.lng * 5) / 5}`
       if (!locationGroups.has(groupKey)) {
         locationGroups.set(groupKey, [])
       }
@@ -254,6 +273,7 @@ const Map = forwardRef<MapRef, MapProps>(({
     // 为每个分组中的用户添加随机偏移
     locationGroups.forEach((groupUsers) => {
       const needsSpread = groupUsers.length > 1  // 同一区域多于1人时需要分散
+      const totalInGroup = groupUsers.length
 
       groupUsers.forEach((user, index) => {
         const isSelected = selectedUser?.id === user.id
@@ -263,7 +283,7 @@ const Map = forwardRef<MapRef, MapProps>(({
         
         // 如果同一区域有多个用户，添加随机偏移分散显示
         if (needsSpread && !isSelected) {
-          const offset = getStableOffset(user.id, index)
+          const offset = getStableOffset(user.id, index, totalInGroup)
           lat += offset.latOffset
           lng += offset.lngOffset
         }

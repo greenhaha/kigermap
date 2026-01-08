@@ -177,17 +177,18 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
       const L = (await import('leaflet')).default
       
       const MAX_ZOOM = 10  // 最大缩放到地级市级别
+      const MIN_ZOOM = 3   // 最小缩放到国家级别
       
       const map = L.map(mapRef.current!, {
         center: mapCoords ? [mapCoords.lat, mapCoords.lng] : [35, 105],
         zoom: 4,
         zoomControl: true,
-        minZoom: 2,
+        minZoom: MIN_ZOOM,
         maxZoom: MAX_ZOOM,
       })
 
-      // 使用无标签地图，去掉街道、道路等现实信息
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+      // 使用简洁地图样式，不显示乡镇、铁路等细节
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         maxZoom: MAX_ZOOM,
         subdomains: 'abcd',
       }).addTo(map)

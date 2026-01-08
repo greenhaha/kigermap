@@ -248,7 +248,96 @@ export function getProvinces(): string[] {
   return Object.keys(CHINA_REGIONS)
 }
 
-// 获取城市列表
+// 中国省份拼音到中文的映射
+export const PROVINCE_PINYIN_MAP: Record<string, string> = {
+  'beijing': '北京',
+  'tianjin': '天津',
+  'shanghai': '上海',
+  'chongqing': '重庆',
+  'hebei': '河北',
+  'shanxi': '山西',
+  'liaoning': '辽宁',
+  'jilin': '吉林',
+  'heilongjiang': '黑龙江',
+  'jiangsu': '江苏',
+  'zhejiang': '浙江',
+  'anhui': '安徽',
+  'fujian': '福建',
+  'jiangxi': '江西',
+  'shandong': '山东',
+  'henan': '河南',
+  'hubei': '湖北',
+  'hunan': '湖南',
+  'guangdong': '广东',
+  'hainan': '海南',
+  'sichuan': '四川',
+  'guizhou': '贵州',
+  'yunnan': '云南',
+  'shaanxi': '陕西',
+  'gansu': '甘肃',
+  'qinghai': '青海',
+  'taiwan': '台湾',
+  'neimenggu': '内蒙古',
+  'inner mongolia': '内蒙古',
+  'guangxi': '广西',
+  'xizang': '西藏',
+  'tibet': '西藏',
+  'ningxia': '宁夏',
+  'xinjiang': '新疆',
+  'hongkong': '香港',
+  'hong kong': '香港',
+  'macau': '澳门',
+  'macao': '澳门',
+  'aomen': '澳门',
+  'xianggang': '香港',
+}
+
+// 国家名称映射（英文/其他语言 -> 中文）
+export const COUNTRY_NAME_MAP: Record<string, string> = {
+  'china': '中国',
+  'japan': '日本',
+  'korea': '韩国',
+  'south korea': '韩国',
+  'united states': '美国',
+  'usa': '美国',
+  'canada': '加拿大',
+  'united kingdom': '英国',
+  'uk': '英国',
+  'france': '法国',
+  'germany': '德国',
+  'australia': '澳大利亚',
+  'new zealand': '新西兰',
+  'singapore': '新加坡',
+  'malaysia': '马来西亚',
+  'thailand': '泰国',
+  'vietnam': '越南',
+  'philippines': '菲律宾',
+  'indonesia': '印度尼西亚',
+  'russia': '俄罗斯',
+  "people's republic of china": '中国',
+  '中华人民共和国': '中国',
+}
+
+// 标准化省份名称（拼音转中文）
+export function normalizeProvince(province: string): string {
+  if (!province) return ''
+  const lower = province.toLowerCase().trim()
+  return PROVINCE_PINYIN_MAP[lower] || province
+}
+
+// 标准化国家名称
+export function normalizeCountry(country: string): string {
+  if (!country) return '未知'
+  const lower = country.toLowerCase().trim()
+  return COUNTRY_NAME_MAP[lower] || country
+}
+
+// 判断省份是否属于中国
+export function isChineseProvince(province: string): boolean {
+  if (!province) return false
+  const normalized = normalizeProvince(province)
+  return Object.keys(CHINA_REGIONS).includes(normalized)
+}// 获取城市列表
 export function getCities(province: string): string[] {
   return CHINA_REGIONS[province] || []
 }

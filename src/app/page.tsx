@@ -8,6 +8,8 @@ import type { KigurumiUser } from '@/types'
 import RegionFilter from '@/components/RegionFilter'
 import UserMenu from '@/components/UserMenu'
 import QuickProfileForm from '@/components/QuickProfileForm'
+import type { Locale } from '@/lib/i18n'
+import { getBrowserLocale } from '@/lib/i18n'
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
@@ -15,7 +17,18 @@ const PAGE_SIZE = 20
 
 export default function HomePage() {
   const { data: session, update: updateSession } = useSession()
+  const [locale, setLocale] = useState<Locale>('zh')
   const [users, setUsers] = useState<KigurumiUser[]>([])
+  
+  // 客户端获取语言设置
+  useEffect(() => {
+    const stored = localStorage.getItem('kigurumi-map-locale') as Locale | null
+    if (stored && ['zh', 'en', 'ja'].includes(stored)) {
+      setLocale(stored)
+    } else {
+      setLocale(getBrowserLocale())
+    }
+  }, [])
   const [filteredUsers, setFilteredUsers] = useState<KigurumiUser[]>([])
   const [selectedUser, setSelectedUser] = useState<KigurumiUser | null>(null)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
@@ -227,7 +240,7 @@ export default function HomePage() {
 
         {/* Map */}
         <div className="flex-1 relative">
-          <Map users={filteredUsers} onUserClick={handleUserSelect} selectedUser={selectedUser} searchQuery={searchQuery} />
+          <Map users={filteredUsers} onUserClick={handleUserSelect} selectedUser={selectedUser} searchQuery={searchQuery} locale={locale} />
 
           {/* 搜索框 */}
           <div className="absolute top-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-72 z-[25]">
