@@ -7,6 +7,14 @@ export function generateShareUrl(user: KigurumiUser): string {
   return `${baseUrl}/profile/${shareCode}`
 }
 
+// 获取当前网站域名（不含协议）
+export function getSiteHost(): string {
+  if (typeof window !== 'undefined') {
+    return window.location.host
+  }
+  return 'cydlcs.com'
+}
+
 // 分享到 QQ
 export function shareToQQ(user: KigurumiUser) {
   const url = generateShareUrl(user)
@@ -43,10 +51,56 @@ export async function copyShareLink(user: KigurumiUser): Promise<boolean> {
     input.value = url
     document.body.appendChild(input)
     input.select()
-    document.execCommand('copy')
+    try {
+      document.execCommand('copy')
+    } catch {
+      // ignore
+    }
     document.body.removeChild(input)
     return true
   }
+}
+
+// 预加载图片并转换为 base64
+export async function preloadImageAsBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('无法创建 canvas context'))
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        const dataUrl = canvas.toDataURL('image/png')
+        resolve(dataUrl)
+      } catch (err) {
+        // CORS 问题，返回原始 URL
+        resolve(url)
+      }
+    }
+    
+    img.onerror = () => {
+      // 加载失败，返回原始 URL
+      resolve(url)
+    }
+    
+    // 添加时间戳避免缓存问题
+    const separator = url.includes('?') ? '&' : '?'
+    img.src = `${url}${separator}t=${Date.now()}`
+  })
+}
+
+// 预加载多张图片
+export async function preloadImages(urls: string[]): Promise<string[]> {
+  const promises = urls.map(url => preloadImageAsBase64(url))
+  return Promise.all(promises)
 }
 
 // 生成分享图片
@@ -58,7 +112,10 @@ export async function generateShareImage(elementId: string): Promise<string> {
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
+    allowTaint: true,
     backgroundColor: '#ffffff',
+    logging: false,
+    imageTimeout: 15000,
   })
   
   return canvas.toDataURL('image/png')
