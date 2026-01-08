@@ -176,15 +176,20 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
     const initMap = async () => {
       const L = (await import('leaflet')).default
       
+      const MAX_ZOOM = 10  // 最大缩放到地级市级别
+      
       const map = L.map(mapRef.current!, {
         center: mapCoords ? [mapCoords.lat, mapCoords.lng] : [35, 105],
         zoom: 4,
         zoomControl: true,
+        minZoom: 2,
+        maxZoom: MAX_ZOOM,
       })
 
-      L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
-        maxZoom: 13,
-        subdomains: '1234',
+      // 使用无标签地图，去掉街道、道路等现实信息
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        maxZoom: MAX_ZOOM,
+        subdomains: 'abcd',
       }).addTo(map)
 
       // 点击地图设置坐标

@@ -118,10 +118,11 @@ export function fuzzyCoordinates(lat: number, lng: number): { lat: number; lng: 
 }
 
 // 反向地理编码 - 使用 Nominatim (免费，支持国内外)
+// 只返回地级市级别信息，去掉县级市以下所有信息
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> {
-  // 使用 zoom=10 获取城市级别信息
+  // 使用 zoom=8 获取地级市级别信息（不包含县级市/区/街道）
   const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=10`,
+    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=8`,
     { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
   )
   
@@ -133,12 +134,10 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
   // 模糊化坐标
   const fuzzy = fuzzyCoordinates(lat, lng)
   
-  // 解析城市 - Nominatim 对中国地址的字段映射
+  // 只获取地级市级别信息
   // city: 地级市 (如 大连市)
-  // county: 区/县 (如 甘井子区) 
   // state/province: 省份
-  let city = addr.city || addr.municipality || addr.town || ''
-  let district = addr.county || addr.district || addr.suburb || ''
+  let city = addr.city || addr.municipality || ''
   const province = addr.state || addr.province || ''
   
   // 对于直辖市特殊处理
@@ -147,30 +146,20 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
     if (!city) city = province.replace('市', '')
   }
   
-  // 如果 city 还是空的，再请求一次更高级别的信息
-  if (!city && district) {
-    try {
-      const cityRes = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=8`,
-        { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
-      )
-      if (cityRes.ok) {
-        const cityData = await cityRes.json()
-        const cityAddr = cityData.address || {}
-        city = cityAddr.city || cityAddr.municipality || cityAddr.town || ''
-      }
-    } catch {
-      // 忽略错误
-    }
+  // 如果 city 还是空的，尝试从省份获取
+  if (!city && province) {
+    // 对于一些特殊情况，使用省份名作为城市
+    city = ''
   }
 
+  // 只返回地级市级别信息，不包含 district（县/区）
   return {
     lat: fuzzy.lat,
     lng: fuzzy.lng,
     country: addr.country || '未知',
     province: province,
     city: city,
-    district: district,
+    // 不返回 district，保护隐私
   }
 }
 

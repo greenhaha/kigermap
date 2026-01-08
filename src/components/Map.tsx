@@ -33,13 +33,13 @@ const Map = forwardRef<MapRef, MapProps>(({
   const leafletRef = useRef<any>(null)
   const [isReady, setIsReady] = useState(false)
 
-  const MAX_ZOOM = 13
+  const MAX_ZOOM = 8  // 最大缩放到地级市/直辖市级别，不显示街道、城市内区域、乡镇等
   const MIN_ZOOM = 2
 
   useImperativeHandle(ref, () => ({
     flyToUser: (user: KigurumiUser) => {
       if (mapInstanceRef.current && user) {
-        mapInstanceRef.current.flyTo([user.location.lat, user.location.lng], 12, {
+        mapInstanceRef.current.flyTo([user.location.lat, user.location.lng], MAX_ZOOM, {
           duration: 1.5,
           easeLinearity: 0.25
         })
@@ -106,20 +106,18 @@ const Map = forwardRef<MapRef, MapProps>(({
 
         L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-        const lang = navigator.language || 'en'
-        const isChinese = lang.startsWith('zh')
-
-        if (isChinese) {
-          L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
-            maxZoom: MAX_ZOOM,
-            subdomains: '1234',
-          }).addTo(map)
-        } else {
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-            maxZoom: MAX_ZOOM,
-            subdomains: 'abcd',
-          }).addTo(map)
-        }
+        // 使用 CartoDB Voyager 地图，显示国家、省份、城市标签，但不显示街道细节
+        // 底图层（无标签）
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+          maxZoom: MAX_ZOOM,
+          subdomains: 'abcd',
+        }).addTo(map)
+        
+        // 标签层（只显示到城市级别，通过 maxZoom 限制不显示街道标签）
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+          maxZoom: MAX_ZOOM,
+          subdomains: 'abcd',
+        }).addTo(map)
 
         // 创建聚合图层 - 使用默认样式但自定义颜色
         markerClusterRef.current = (L as any).markerClusterGroup({
@@ -127,7 +125,7 @@ const Map = forwardRef<MapRef, MapProps>(({
           spiderfyOnMaxZoom: true,
           showCoverageOnHover: false,
           zoomToBoundsOnClick: true,
-          disableClusteringAtZoom: 12,
+          disableClusteringAtZoom: MAX_ZOOM,  // 使用统一的最大缩放级别
           iconCreateFunction: (cluster: any) => {
             const count = cluster.getChildCount()
             let size = 36
@@ -224,34 +222,87 @@ const Map = forwardRef<MapRef, MapProps>(({
       })
     }
 
+    // 基于用户ID生成稳定的随机偏移（同一用户每次偏移相同）
+    const getStableOffset = (userId: string, index: number) => {
+      // 使用简单的哈希算法生成稳定的伪随机数
+      let hash = 0
+      for (let i = 0; i < userId.length; i++) {
+        hash = ((hash << 5) - hash) + userId.charCodeAt(i)
+        hash = hash & hash
+      }
+      // 基于哈希值生成 -1 到 1 之间的稳定随机数
+      const seed1 = Math.abs(Math.sin(hash + index)) 
+      const seed2 = Math.abs(Math.cos(hash + index))
+      return {
+        latOffset: (seed1 - 0.5) * 0.15,  // 约 ±8km 的随机偏移
+        lngOffset: (seed2 - 0.5) * 0.15,
+      }
+    }
+
+    // 按位置分组用户（使用较低精度的坐标作为分组键）
+    const locationGroups = new globalThis.Map<string, typeof users>()
     users.forEach(user => {
       if (!user.location?.lat || !user.location?.lng) return
-      
-      const isSelected = selectedUser?.id === user.id
-      
-      const marker = L.marker([user.location.lat, user.location.lng], {
-        icon: createIcon(user.photos[0] || '', isSelected),
-      })
-
-      marker.bindPopup(createPopupContent(user), {
-        className: 'custom-popup',
-        closeButton: false,
-        offset: [0, -20],
-        maxWidth: 320,
-        minWidth: 280,
-      })
-
-      marker.on('click', () => onUserClick?.(user))
-      
-      if (isSelected) {
-        // 选中的用户单独显示在地图上，不加入聚合
-        marker.addTo(map)
-        selectedMarkerRef.current = marker
-      } else {
-        clusterGroup.addLayer(marker)
+      // 使用 0.1 度精度分组（约 10km 范围）
+      const groupKey = `${Math.round(user.location.lat * 10) / 10},${Math.round(user.location.lng * 10) / 10}`
+      if (!locationGroups.has(groupKey)) {
+        locationGroups.set(groupKey, [])
       }
-      
-      markersRef.current.set(user.id, marker)
+      locationGroups.get(groupKey)!.push(user)
+    })
+
+    // 为每个分组中的用户添加随机偏移
+    locationGroups.forEach((groupUsers) => {
+      const needsSpread = groupUsers.length > 1  // 同一区域多于1人时需要分散
+
+      groupUsers.forEach((user, index) => {
+        const isSelected = selectedUser?.id === user.id
+        
+        let lat = user.location.lat
+        let lng = user.location.lng
+        
+        // 如果同一区域有多个用户，添加随机偏移分散显示
+        if (needsSpread && !isSelected) {
+          const offset = getStableOffset(user.id, index)
+          lat += offset.latOffset
+          lng += offset.lngOffset
+        }
+        
+        const marker = L.marker([lat, lng], {
+          icon: createIcon(user.photos[0] || '', isSelected),
+        })
+
+        marker.bindPopup(createPopupContent(user), {
+          className: 'custom-popup',
+          closeButton: false,
+          offset: [0, -20],
+          maxWidth: 320,
+          minWidth: 280,
+        })
+
+        marker.on('click', () => onUserClick?.(user))
+        
+        if (isSelected) {
+          // 选中的用户单独显示在地图上，不加入聚合，使用原始位置
+          const selectedMarker = L.marker([user.location.lat, user.location.lng], {
+            icon: createIcon(user.photos[0] || '', true),
+          })
+          selectedMarker.bindPopup(createPopupContent(user), {
+            className: 'custom-popup',
+            closeButton: false,
+            offset: [0, -20],
+            maxWidth: 320,
+            minWidth: 280,
+          })
+          selectedMarker.on('click', () => onUserClick?.(user))
+          selectedMarker.addTo(map)
+          selectedMarkerRef.current = selectedMarker
+          markersRef.current.set(user.id, selectedMarker)
+        } else {
+          clusterGroup.addLayer(marker)
+          markersRef.current.set(user.id, marker)
+        }
+      })
     })
   }, [isReady, users, selectedUser, onUserClick])
 
@@ -259,7 +310,7 @@ const Map = forwardRef<MapRef, MapProps>(({
   useEffect(() => {
     if (!isReady || !mapInstanceRef.current || !selectedUser) return
 
-    mapInstanceRef.current.flyTo([selectedUser.location.lat, selectedUser.location.lng], 11, {
+    mapInstanceRef.current.flyTo([selectedUser.location.lat, selectedUser.location.lng], MAX_ZOOM, {
       duration: 1,
     })
 
