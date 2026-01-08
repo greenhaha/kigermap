@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { 
   LocationInfo, 
-  getCurrentPosition, 
+  getSmartLocation, 
   reverseGeocode, 
   getLocationByRegion,
   COUNTRIES,
@@ -37,14 +37,17 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
     setLoading(true)
     setLocalError('')
     try {
-      const pos = await getCurrentPosition()
-      const info = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
-      onChange(info)
-      
-      // 同步到手动选择的值
-      setCountry(info.country || '中国')
-      setProvince(info.province || '')
-      setCity(info.city || '')
+      const info = await getSmartLocation()
+      if (info) {
+        onChange(info)
+        // 同步到手动选择的值
+        setCountry(info.country || '中国')
+        setProvince(info.province || '')
+        setCity(info.city || '')
+      } else {
+        setLocalError('获取定位失败，请手动选择')
+        setMode('manual')
+      }
     } catch (err: any) {
       setLocalError(err.message || '获取定位失败，请手动选择')
       setMode('manual')

@@ -133,10 +133,11 @@ export default function QuickProfileForm({ onClose, onSuccess }: QuickProfileFor
     }
   }
 
+  // 未登录状态
   if (!session) {
     return (
-      <div className="glass-dark rounded-3xl p-6 max-w-md w-full mx-auto">
-        <div className="text-center py-8">
+      <div className="glass-dark rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-md mx-auto">
+        <div className="text-center py-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-3xl">🎭</span>
           </div>
@@ -162,138 +163,231 @@ export default function QuickProfileForm({ onClose, onSuccess }: QuickProfileFor
   }
 
   return (
-    <div className="glass-dark rounded-3xl overflow-hidden max-w-md w-full mx-auto max-h-[90vh] flex flex-col">
-      <div className="p-5 border-b border-white/10 flex justify-between items-center">
-        <h2 className="text-lg font-bold text-gradient">快速加入地图</h2>
-        <button onClick={onClose} className="w-8 h-8 glass rounded-full flex items-center justify-center text-white/60 hover:text-white">
-          ✕
+    <div className="glass-dark rounded-t-3xl sm:rounded-3xl overflow-hidden w-full sm:w-[90vw] sm:max-w-5xl mx-auto flex flex-col max-h-[85vh]">
+      {/* Header */}
+      <div className="p-4 sm:p-5 border-b border-white/10 flex justify-between items-center flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-lg">
+            🎭
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">快速加入地图</h2>
+            <p className="text-xs text-white/50">填写信息，展示你的角色</p>
+          </div>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="w-8 h-8 glass rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
-        {/* CN名称 */}
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">CN名称</label>
-          <input
-            type="text"
-            value={cnName}
-            onChange={e => setCnName(e.target.value)}
-            placeholder="你的CN名称"
-            className="w-full px-4 py-3 input-modern rounded-xl text-white placeholder-white/30 outline-none text-sm"
-            maxLength={30}
-          />
-        </div>
+      {/* Form Content */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          {/* PC端三栏布局 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 第一栏：基本信息 */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">基本信息</h3>
+              
+              {/* CN名称 */}
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  CN名称 <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cnName}
+                  onChange={e => setCnName(e.target.value)}
+                  placeholder="你的CN名称"
+                  className="w-full px-4 py-3 input-modern rounded-xl text-white placeholder-white/30 outline-none"
+                  maxLength={30}
+                />
+              </div>
 
-        {/* 自我介绍 */}
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">自我介绍</label>
-          <textarea
-            value={introduction}
-            onChange={e => setIntroduction(e.target.value)}
-            placeholder="简单介绍一下你自己..."
-            rows={2}
-            className="w-full px-4 py-3 input-modern rounded-xl text-white placeholder-white/30 outline-none resize-none text-sm"
-            maxLength={200}
-          />
-        </div>
+              {/* 自我介绍 */}
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  自我介绍 <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={introduction}
+                  onChange={e => setIntroduction(e.target.value)}
+                  placeholder="简单介绍一下你自己..."
+                  rows={5}
+                  className="w-full px-4 py-3 input-modern rounded-xl text-white placeholder-white/30 outline-none resize-none"
+                  maxLength={200}
+                />
+                <p className="text-xs text-white/40 mt-1 text-right">{introduction.length}/200</p>
+              </div>
+            </div>
 
-        {/* 照片 */}
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">照片（最多3张）</label>
-          <div className="flex gap-2">
-            {previews.map((src, i) => (
-              <div key={i} className="relative w-20 h-20 group">
-                <img src={src} className="w-full h-full object-cover rounded-lg" />
+            {/* 第二栏：照片上传 */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">照片展示</h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  上传照片 <span className="text-red-400">*</span>
+                  <span className="text-white/40 font-normal ml-2">最多3张</span>
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[0, 1, 2].map((index) => (
+                    <div key={index} className="aspect-square">
+                      {previews[index] ? (
+                        <div className="relative group w-full h-full">
+                          <img 
+                            src={previews[index]} 
+                            className="w-full h-full object-cover rounded-xl border-2 border-white/10" 
+                            alt={`照片 ${index + 1}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full h-full border-2 border-dashed border-white/20 rounded-xl flex flex-col items-center justify-center text-white/40 hover:border-primary hover:text-primary hover:bg-primary/5 transition gap-2"
+                        >
+                          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span className="text-xs">添加</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+                <p className="text-xs text-white/40 mt-2">支持 JPG、PNG、WebP 格式</p>
+              </div>
+            </div>
+
+            {/* 第三栏：位置和社交 */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">位置信息</h3>
+              
+              {/* 位置区块 */}
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  你的位置 <span className="text-red-400">*</span>
+                </label>
+                <LocationPicker
+                  value={location}
+                  onChange={setLocation}
+                />
+              </div>
+
+              {/* 社交链接区块 */}
+              <div className="glass rounded-xl overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => removePhoto(i)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition"
+                  onClick={() => setShowSocialLinks(!showSocialLinks)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition"
                 >
-                  ✕
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium">社交账号</p>
+                      <p className="text-xs text-white/40">可选</p>
+                    </div>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 text-white/40 transition-transform ${showSocialLinks ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+                {showSocialLinks && (
+                  <div className="p-3 pt-0 border-t border-white/5">
+                    <SocialLinksInput value={socialLinks} onChange={setSocialLinks} />
+                  </div>
+                )}
               </div>
-            ))}
-            {previews.length < 3 && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-20 h-20 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center text-white/40 hover:border-primary hover:text-primary transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            )}
+            </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handlePhotoSelect}
-            className="hidden"
-          />
-        </div>
 
-        {/* 位置 */}
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-1.5">位置</label>
-          <LocationPicker
-            value={location}
-            onChange={setLocation}
-          />
-        </div>
+          {/* 上传进度 */}
+          {uploadProgress > 0 && (
+            <div className="glass rounded-xl p-4 mt-6">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-white/70">正在上传照片...</span>
+                <span className="text-primary font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300" 
+                  style={{ width: `${uploadProgress}%` }} 
+                />
+              </div>
+            </div>
+          )}
 
-        {/* 社交链接 */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowSocialLinks(!showSocialLinks)}
-            className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition"
-          >
-            <svg className={`w-4 h-4 transition-transform ${showSocialLinks ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            添加社交账号（可选）
-          </button>
-          {showSocialLinks && (
-            <div className="mt-3">
-              <SocialLinksInput value={socialLinks} onChange={setSocialLinks} />
+          {/* 错误提示 */}
+          {error && (
+            <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm flex items-start gap-3 mt-6">
+              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{error}</span>
             </div>
           )}
         </div>
-
-        {/* 上传进度 */}
-        {uploadProgress > 0 && (
-          <div className="glass rounded-xl p-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-white/70">上传中...</span>
-              <span className="text-primary">{uploadProgress}%</span>
-            </div>
-            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all" style={{ width: `${uploadProgress}%` }} />
-            </div>
-          </div>
-        )}
-
-        {/* 错误提示 */}
-        {error && (
-          <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm">
-            {error}
-          </div>
-        )}
       </form>
 
-      {/* 提交按钮 */}
-      <div className="p-5 border-t border-white/10">
-        <button
-          type="submit"
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full py-3 btn-gradient rounded-xl font-medium text-white transition touch-target disabled:opacity-50"
-        >
-          {loading ? '提交中...' : '加入地图'}
-        </button>
+      {/* Footer */}
+      <div className="p-4 sm:p-5 border-t border-white/10 flex-shrink-0 bg-dark/50">
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-8 py-3 glass rounded-xl font-medium hover:bg-white/10 transition"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-10 py-3 btn-gradient rounded-xl font-medium text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>提交中...</span>
+              </>
+            ) : (
+              <>
+                <span>🎭</span>
+                <span>加入地图</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )

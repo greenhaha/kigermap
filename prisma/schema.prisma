@@ -79,3 +79,23 @@ model KigurumiProfile {
   @@index([province])
   @@index([shareCode])
 }
+
+// 问题反馈表
+model Feedback {
+  id        String   @id @default(cuid())
+  type      String   // bug, feature, question, other
+  title     String
+  content   String
+  contact   String?  // 联系方式
+  status    String   @default("pending") // pending, processing, resolved, closed
+  
+  // 关联用户（可选）
+  accountId String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}

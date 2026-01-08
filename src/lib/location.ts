@@ -22,6 +22,47 @@ export function getCurrentPosition(): Promise<GeolocationPosition> {
   })
 }
 
+// IP 定位（不需要 HTTPS，精度较低但可作为备选）
+export async function getLocationByIP(): Promise<LocationInfo | null> {
+  try {
+    // 使用免费的 IP 定位服务
+    const res = await fetch('https://ipapi.co/json/')
+    if (!res.ok) return null
+    
+    const data = await res.json()
+    
+    return {
+      lat: data.latitude,
+      lng: data.longitude,
+      country: data.country_name || '未知',
+      province: data.region || '',
+      city: data.city || '',
+    }
+  } catch {
+    return null
+  }
+}
+
+// 智能获取位置：优先 GPS，失败则用 IP 定位
+export async function getSmartLocation(): Promise<LocationInfo | null> {
+  // 检查是否支持 GPS 且是安全上下文（HTTPS）
+  const isSecureContext = typeof window !== 'undefined' && 
+    (window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost')
+  
+  if (isSecureContext && navigator.geolocation) {
+    try {
+      const pos = await getCurrentPosition()
+      const location = await reverseGeocode(pos.coords.latitude, pos.coords.longitude)
+      return location
+    } catch (e) {
+      console.log('GPS 定位失败，尝试 IP 定位')
+    }
+  }
+  
+  // 降级到 IP 定位
+  return getLocationByIP()
+}
+
 // 将坐标模糊化到县市级别（约 0.01 度 ≈ 1km）
 export function fuzzyCoordinates(lat: number, lng: number): { lat: number; lng: number } {
   // 保留2位小数，大约精确到1公里范围

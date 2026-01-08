@@ -9,6 +9,7 @@ interface MapProps {
   selectedUser?: KigurumiUser | null
   center?: [number, number]
   zoom?: number
+  searchQuery?: string
 }
 
 export interface MapRef {
@@ -21,13 +22,19 @@ const Map = forwardRef<MapRef, MapProps>(({
   onUserClick, 
   selectedUser,
   center = [35, 105], 
-  zoom = 4 
+  zoom = 4,
+  searchQuery = ''
 }, ref) => {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new globalThis.Map())
+  const markerClusterRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
   const [isReady, setIsReady] = useState(false)
+
+  // 最大缩放级别（县级市约为 12-13）
+  const MAX_ZOOM = 13
+  const MIN_ZOOM = 2
 
   useImperativeHandle(ref, () => ({
     flyToUser: (user: KigurumiUser) => {
@@ -50,14 +57,10 @@ const Map = forwardRef<MapRef, MapProps>(({
   // 初始化地图
   useEffect(() => {
     if (!mapContainerRef.current) return
-    
-    // 如果已经有地图实例，跳过
     if (mapInstanceRef.current) return
     
-    // 检查 DOM 是否已被 Leaflet 初始化
     const container = mapContainerRef.current
     if ((container as any)._leaflet_id) {
-      // 清除旧的 leaflet id
       delete (container as any)._leaflet_id
     }
 
@@ -82,8 +85,8 @@ const Map = forwardRef<MapRef, MapProps>(({
     const initMap = async () => {
       try {
         const L = (await import('leaflet')).default
+        await import('leaflet.markercluster')
         
-        // 修复 Leaflet 默认图标路径问题
         delete (L.Icon.Default.prototype as any)._getIconUrl
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -98,6 +101,8 @@ const Map = forwardRef<MapRef, MapProps>(({
           zoom,
           zoomControl: false,
           attributionControl: false,
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
         })
 
         L.control.zoom({ position: 'bottomright' }).addTo(map)
@@ -107,16 +112,50 @@ const Map = forwardRef<MapRef, MapProps>(({
 
         if (isChinese) {
           L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
-            maxZoom: 18,
+            maxZoom: MAX_ZOOM,
             subdomains: '1234',
           }).addTo(map)
         } else {
           L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 18,
+            maxZoom: MAX_ZOOM,
             subdomains: 'abcd',
           }).addTo(map)
         }
 
+        // 创建聚合图层
+        markerClusterRef.current = (L as any).markerClusterGroup({
+          maxClusterRadius: 60,
+          spiderfyOnMaxZoom: true,
+          showCoverageOnHover: false,
+          zoomToBoundsOnClick: true,
+          disableClusteringAtZoom: 11,
+          iconCreateFunction: (cluster: any) => {
+            const count = cluster.getChildCount()
+            let size = 'small'
+            let sizeClass = 40
+            
+            if (count >= 100) {
+              size = 'large'
+              sizeClass = 56
+            } else if (count >= 10) {
+              size = 'medium'
+              sizeClass = 48
+            }
+            
+            return L.divIcon({
+              html: `
+                <div class="cluster-marker cluster-${size}">
+                  <span>${count}</span>
+                </div>
+              `,
+              className: 'custom-cluster-icon',
+              iconSize: [sizeClass, sizeClass],
+              iconAnchor: [sizeClass / 2, sizeClass / 2],
+            })
+          }
+        })
+
+        map.addLayer(markerClusterRef.current)
         mapInstanceRef.current = map
         setIsReady(true)
       } catch (err) {
@@ -131,37 +170,39 @@ const Map = forwardRef<MapRef, MapProps>(({
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
+      markerClusterRef.current = null
       setIsReady(false)
     }
   }, [])
 
   // 更新标记
   useEffect(() => {
-    if (!isReady || !mapInstanceRef.current || !leafletRef.current) return
+    if (!isReady || !mapInstanceRef.current || !leafletRef.current || !markerClusterRef.current) return
 
     const L = leafletRef.current
-    const map = mapInstanceRef.current
+    const clusterGroup = markerClusterRef.current
 
     // 清除旧标记
-    markersRef.current.forEach(m => m.remove())
+    clusterGroup.clearLayers()
     markersRef.current.clear()
 
     if (users.length === 0) return
 
-    const createIcon = (photo: string, isSelected: boolean = false) => L.divIcon({
+    const createIcon = (photo: string, isSelected: boolean = false, isHighlighted: boolean = false) => L.divIcon({
       className: 'custom-marker',
       html: `
         <div style="
           width: ${isSelected ? '56px' : '48px'};
           height: ${isSelected ? '56px' : '48px'};
           border-radius: 50%;
-          border: 3px solid ${isSelected ? '#EC4899' : '#8B5CF6'};
-          box-shadow: 0 0 ${isSelected ? '30px' : '20px'} rgba(${isSelected ? '236, 72, 153' : '139, 92, 246'}, ${isSelected ? '0.8' : '0.5'}), 0 4px 12px rgba(0,0,0,0.3);
+          border: 3px solid ${isHighlighted ? '#10B981' : isSelected ? '#EC4899' : '#8B5CF6'};
+          box-shadow: 0 0 ${isSelected || isHighlighted ? '30px' : '20px'} rgba(${isHighlighted ? '16, 185, 129' : isSelected ? '236, 72, 153' : '139, 92, 246'}, ${isSelected || isHighlighted ? '0.8' : '0.5'}), 0 4px 12px rgba(0,0,0,0.3);
           overflow: hidden;
           background: #1E293B;
           cursor: pointer;
           transition: all 0.3s ease;
           transform: ${isSelected ? 'scale(1.1)' : 'scale(1)'};
+          ${isHighlighted ? 'animation: pulse 2s infinite;' : ''}
         ">
           <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231E293B%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22white%22 font-size=%2240%22>🎭</text></svg>'" />
         </div>
@@ -174,10 +215,12 @@ const Map = forwardRef<MapRef, MapProps>(({
       if (!user.location?.lat || !user.location?.lng) return
       
       const isSelected = selectedUser?.id === user.id
+      const isHighlighted = !!(searchQuery && user.cnName.toLowerCase().includes(searchQuery.toLowerCase()))
+      
       const marker = L.marker([user.location.lat, user.location.lng], {
-        icon: createIcon(user.photos[0] || '', isSelected),
-        zIndexOffset: isSelected ? 1000 : 0
-      }).addTo(map)
+        icon: createIcon(user.photos[0] || '', isSelected, isHighlighted),
+        zIndexOffset: isSelected ? 1000 : isHighlighted ? 500 : 0
+      })
 
       marker.bindPopup(createPopupContent(user), {
         className: 'custom-popup',
@@ -188,9 +231,17 @@ const Map = forwardRef<MapRef, MapProps>(({
       })
 
       marker.on('click', () => onUserClick?.(user))
+      
+      // 选中的用户不加入聚合，直接显示
+      if (isSelected) {
+        marker.addTo(mapInstanceRef.current)
+      } else {
+        clusterGroup.addLayer(marker)
+      }
+      
       markersRef.current.set(user.id, marker)
     })
-  }, [isReady, users, selectedUser, onUserClick])
+  }, [isReady, users, selectedUser, searchQuery, onUserClick])
 
   // 选中用户时自动定位
   useEffect(() => {
@@ -218,6 +269,18 @@ const Map = forwardRef<MapRef, MapProps>(({
           </div>
         </div>
       )}
+      
+      {/* 聚合图例 */}
+      <div className="absolute bottom-20 left-3 glass-dark rounded-lg px-3 py-2 text-xs text-white/60 hidden sm:block">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-3 h-3 rounded-full bg-primary"></div>
+          <span>单个成员</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-[8px] text-white font-bold">N</div>
+          <span>聚合显示</span>
+        </div>
+      </div>
     </div>
   )
 })
