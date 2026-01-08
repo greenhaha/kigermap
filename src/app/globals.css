@@ -290,17 +290,17 @@ body {
   }
 }
 
-/* Marker Cluster 自定义样式 */
-.marker-cluster {
+/* Marker Cluster 样式重置 */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
   background: transparent !important;
 }
 
-.marker-cluster div {
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
   background: transparent !important;
-}
-
-.marker-cluster span {
-  display: none !important;
 }
 
 .leaflet-marker-icon {
@@ -308,56 +308,9 @@ body {
   border: none !important;
 }
 
-/* 自定义聚合图标 */
-.custom-cluster-icon {
-  background: transparent !important;
-}
-
-.cluster-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.cluster-marker:hover {
-  transform: scale(1.15);
-}
-
-.cluster-small {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
-  font-size: 12px;
-}
-
-.cluster-medium {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
-  font-size: 14px;
-}
-
-.cluster-large {
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, #EC4899 0%, #F472B6 100%);
-  font-size: 16px;
-}
-
-/* 聚合动画 */
-.cluster-small, .cluster-medium, .cluster-large {
-  transition: transform 0.2s ease;
-}
-
-.cluster-small:hover, .cluster-medium:hover, .cluster-large:hover {
-  transform: scale(1.1);
+/* 蜘蛛展开线条 */
+.leaflet-cluster-anim .leaflet-marker-icon {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
 }
 
 /* 高亮脉冲动画 */

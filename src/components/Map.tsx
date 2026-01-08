@@ -29,10 +29,10 @@ const Map = forwardRef<MapRef, MapProps>(({
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new globalThis.Map())
   const markerClusterRef = useRef<any>(null)
+  const selectedMarkerRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
   const [isReady, setIsReady] = useState(false)
 
-  // 最大缩放级别（县级市约为 12-13）
   const MAX_ZOOM = 13
   const MIN_ZOOM = 2
 
@@ -64,7 +64,6 @@ const Map = forwardRef<MapRef, MapProps>(({
       delete (container as any)._leaflet_id
     }
 
-    // 注册全局轮播函数
     ;(window as any).popupSlider = (popupId: string, direction: number) => {
       const popup = document.getElementById(popupId)
       if (!popup) return
@@ -122,35 +121,44 @@ const Map = forwardRef<MapRef, MapProps>(({
           }).addTo(map)
         }
 
-        // 创建聚合图层
+        // 创建聚合图层 - 使用默认样式但自定义颜色
         markerClusterRef.current = (L as any).markerClusterGroup({
-          maxClusterRadius: 60,
+          maxClusterRadius: 50,
           spiderfyOnMaxZoom: true,
           showCoverageOnHover: false,
           zoomToBoundsOnClick: true,
-          disableClusteringAtZoom: 11,
+          disableClusteringAtZoom: 12,
           iconCreateFunction: (cluster: any) => {
             const count = cluster.getChildCount()
-            let size = 'small'
-            let sizeClass = 40
+            let size = 36
+            let fontSize = 12
             
             if (count >= 100) {
-              size = 'large'
-              sizeClass = 56
+              size = 50
+              fontSize = 14
             } else if (count >= 10) {
-              size = 'medium'
-              sizeClass = 48
+              size = 42
+              fontSize = 13
             }
             
             return L.divIcon({
-              html: `
-                <div class="cluster-marker cluster-${size}">
-                  <span>${count}</span>
-                </div>
-              `,
-              className: 'custom-cluster-icon',
-              iconSize: [sizeClass, sizeClass],
-              iconAnchor: [sizeClass / 2, sizeClass / 2],
+              html: `<div style="
+                width: ${size}px;
+                height: ${size}px;
+                background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: 700;
+                font-size: ${fontSize}px;
+                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5);
+                border: 3px solid rgba(255,255,255,0.3);
+              ">${count}</div>`,
+              className: '',
+              iconSize: [size, size],
+              iconAnchor: [size / 2, size / 2],
             })
           }
         })
@@ -180,46 +188,49 @@ const Map = forwardRef<MapRef, MapProps>(({
     if (!isReady || !mapInstanceRef.current || !leafletRef.current || !markerClusterRef.current) return
 
     const L = leafletRef.current
+    const map = mapInstanceRef.current
     const clusterGroup = markerClusterRef.current
 
-    // 清除旧标记
+    // 清除旧的选中标记
+    if (selectedMarkerRef.current) {
+      map.removeLayer(selectedMarkerRef.current)
+      selectedMarkerRef.current = null
+    }
+
+    // 清除聚合图层
     clusterGroup.clearLayers()
     markersRef.current.clear()
 
     if (users.length === 0) return
 
-    const createIcon = (photo: string, isSelected: boolean = false, isHighlighted: boolean = false) => L.divIcon({
-      className: 'custom-marker',
-      html: `
-        <div style="
-          width: ${isSelected ? '56px' : '48px'};
-          height: ${isSelected ? '56px' : '48px'};
+    const createIcon = (photo: string, isSelected: boolean = false) => {
+      const size = isSelected ? 56 : 44
+      return L.divIcon({
+        className: '',
+        html: `<div style="
+          width: ${size}px;
+          height: ${size}px;
           border-radius: 50%;
-          border: 3px solid ${isHighlighted ? '#10B981' : isSelected ? '#EC4899' : '#8B5CF6'};
-          box-shadow: 0 0 ${isSelected || isHighlighted ? '30px' : '20px'} rgba(${isHighlighted ? '16, 185, 129' : isSelected ? '236, 72, 153' : '139, 92, 246'}, ${isSelected || isHighlighted ? '0.8' : '0.5'}), 0 4px 12px rgba(0,0,0,0.3);
+          border: 3px solid ${isSelected ? '#EC4899' : '#8B5CF6'};
+          box-shadow: 0 0 ${isSelected ? '25px' : '15px'} rgba(${isSelected ? '236, 72, 153' : '139, 92, 246'}, 0.6);
           overflow: hidden;
           background: #1E293B;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          transform: ${isSelected ? 'scale(1.1)' : 'scale(1)'};
-          ${isHighlighted ? 'animation: pulse 2s infinite;' : ''}
         ">
-          <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231E293B%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22white%22 font-size=%2240%22>🎭</text></svg>'" />
-        </div>
-      `,
-      iconSize: [isSelected ? 56 : 48, isSelected ? 56 : 48],
-      iconAnchor: [isSelected ? 28 : 24, isSelected ? 28 : 24],
-    })
+          <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" 
+            onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px\\'>🎭</div>'" />
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      })
+    }
 
     users.forEach(user => {
       if (!user.location?.lat || !user.location?.lng) return
       
       const isSelected = selectedUser?.id === user.id
-      const isHighlighted = !!(searchQuery && user.cnName.toLowerCase().includes(searchQuery.toLowerCase()))
       
       const marker = L.marker([user.location.lat, user.location.lng], {
-        icon: createIcon(user.photos[0] || '', isSelected, isHighlighted),
-        zIndexOffset: isSelected ? 1000 : isHighlighted ? 500 : 0
+        icon: createIcon(user.photos[0] || '', isSelected),
       })
 
       marker.bindPopup(createPopupContent(user), {
@@ -232,29 +243,29 @@ const Map = forwardRef<MapRef, MapProps>(({
 
       marker.on('click', () => onUserClick?.(user))
       
-      // 选中的用户不加入聚合，直接显示
       if (isSelected) {
-        marker.addTo(mapInstanceRef.current)
+        // 选中的用户单独显示在地图上，不加入聚合
+        marker.addTo(map)
+        selectedMarkerRef.current = marker
       } else {
         clusterGroup.addLayer(marker)
       }
       
       markersRef.current.set(user.id, marker)
     })
-  }, [isReady, users, selectedUser, searchQuery, onUserClick])
+  }, [isReady, users, selectedUser, onUserClick])
 
   // 选中用户时自动定位
   useEffect(() => {
     if (!isReady || !mapInstanceRef.current || !selectedUser) return
 
-    mapInstanceRef.current.flyTo([selectedUser.location.lat, selectedUser.location.lng], 12, {
-      duration: 1.2,
-      easeLinearity: 0.25
+    mapInstanceRef.current.flyTo([selectedUser.location.lat, selectedUser.location.lng], 11, {
+      duration: 1,
     })
 
     const marker = markersRef.current.get(selectedUser.id)
     if (marker) {
-      setTimeout(() => marker.openPopup(), 600)
+      setTimeout(() => marker.openPopup(), 500)
     }
   }, [isReady, selectedUser])
 
@@ -269,18 +280,6 @@ const Map = forwardRef<MapRef, MapProps>(({
           </div>
         </div>
       )}
-      
-      {/* 聚合图例 */}
-      <div className="absolute bottom-20 left-3 glass-dark rounded-lg px-3 py-2 text-xs text-white/60 hidden sm:block">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-3 h-3 rounded-full bg-primary"></div>
-          <span>单个成员</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-[8px] text-white font-bold">N</div>
-          <span>聚合显示</span>
-        </div>
-      </div>
     </div>
   )
 })
@@ -293,22 +292,18 @@ function createPopupContent(user: KigurumiUser): string {
   const hasMultiplePhotos = user.photos.length > 1
 
   const photosHtml = user.photos.map((photo, index) => `
-    <img src="${photo}" alt="${user.cnName}" class="popup-slide ${index === 0 ? 'active' : ''}" data-index="${index}" />
+    <img src="${photo}" alt="${user.cnName}" class="popup-slide ${index === 0 ? 'active' : ''}" />
   `).join('')
 
   const dotsHtml = hasMultiplePhotos ? `
     <div class="popup-dots">
-      ${user.photos.map((_, index) => `<span class="popup-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`).join('')}
+      ${user.photos.map((_, index) => `<span class="popup-dot ${index === 0 ? 'active' : ''}"></span>`).join('')}
     </div>
   ` : ''
 
   const arrowsHtml = hasMultiplePhotos ? `
-    <button class="popup-arrow popup-arrow-left" onclick="window.popupSlider('${uniqueId}', -1)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <button class="popup-arrow popup-arrow-right" onclick="window.popupSlider('${uniqueId}', 1)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-    </button>
+    <button class="popup-arrow popup-arrow-left" onclick="window.popupSlider('${uniqueId}', -1)">‹</button>
+    <button class="popup-arrow popup-arrow-right" onclick="window.popupSlider('${uniqueId}', 1)">›</button>
   ` : ''
 
   return `
@@ -321,7 +316,7 @@ function createPopupContent(user: KigurumiUser): string {
       <div class="popup-info">
         <div class="popup-header">
           <h3 class="popup-name">${user.cnName}</h3>
-          <span class="popup-location">${location}</span>
+          <span class="popup-location">📍 ${location}</span>
         </div>
         <p class="popup-intro">${user.introduction}</p>
         <a href="/profile/${user.shareCode}" class="popup-btn">查看主页</a>
