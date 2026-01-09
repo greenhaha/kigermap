@@ -24,6 +24,12 @@
   display: none;
 }
 
+/* 竖向文字 */
+.writing-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
 html {
   scroll-behavior: smooth;
 }

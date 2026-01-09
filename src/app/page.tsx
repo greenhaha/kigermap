@@ -40,6 +40,8 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<KigurumiUser[]>([])
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -220,22 +222,50 @@ export default function HomePage() {
       {/* Main */}
       <main className="flex-1 flex flex-col lg:flex-row min-h-0 relative">
         {/* Left Sidebar */}
-        <aside className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-white/5 glass-dark flex-shrink-0">
-          <div className="p-4 border-b border-white/5">
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="glass rounded-xl p-3">
-                <div className="text-xl font-bold text-gradient">{users.length}</div>
-                <div className="text-xs text-white/50">成员</div>
+        <aside className={`hidden lg:flex flex-col border-r border-white/5 glass-dark flex-shrink-0 transition-all duration-300 relative z-30 ${leftSidebarCollapsed ? 'w-14' : 'w-64 xl:w-72'}`}>
+          {/* 收起/展开按钮 */}
+          <button
+            onClick={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+            className="absolute -right-3 top-1/2 -translate-y-1/2 z-40 w-6 h-16 bg-gradient-to-r from-primary/80 to-secondary/80 hover:from-primary hover:to-secondary rounded-r-full flex items-center justify-center text-white shadow-lg shadow-primary/20 transition-all hover:w-7"
+          >
+            <svg className={`w-4 h-4 transition-transform duration-300 ${leftSidebarCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          
+          {!leftSidebarCollapsed ? (
+            <>
+              <div className="p-4 border-b border-white/5">
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="glass rounded-xl p-3">
+                    <div className="text-xl font-bold text-gradient">{users.length}</div>
+                    <div className="text-xs text-white/50">成员</div>
+                  </div>
+                  <div className="glass rounded-xl p-3">
+                    <div className="text-xl font-bold text-gradient">{countryCount}</div>
+                    <div className="text-xs text-white/50">国家/地区</div>
+                  </div>
+                </div>
               </div>
-              <div className="glass rounded-xl p-3">
-                <div className="text-xl font-bold text-gradient">{countryCount}</div>
-                <div className="text-xs text-white/50">国家</div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <RegionFilter onFilter={handleFilter} stats={stats} />
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center py-4 gap-3 h-full">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30 flex items-center justify-center">
+                <span className="text-sm font-bold text-gradient">{users.length}</span>
+              </div>
+              <div className="flex-1 flex items-center">
+                <span className="text-xs text-white/50 writing-vertical tracking-wider">筛选地区</span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                <svg className="w-4 h-4 text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
             </div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <RegionFilter onFilter={handleFilter} stats={stats} />
-          </div>
+          )}
         </aside>
 
         {/* Map */}
@@ -338,75 +368,110 @@ export default function HomePage() {
         </div>
 
         {/* Right Sidebar */}
-        <aside className="hidden lg:flex flex-col w-80 xl:w-96 border-l border-white/5 glass-dark flex-shrink-0">
-          <div className="p-4 border-b border-white/5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-white/90">
-                成员<span className="text-white/40 font-normal ml-1.5 text-sm">({filteredUsers.length})</span>
-              </h2>
-              {!hasProfile && (
-                <button onClick={() => setShowQuickForm(true)} className="text-xs text-primary hover:underline">+ 加入</button>
-              )}
-            </div>
-            {filterText && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs px-2 py-1 rounded-lg bg-primary/20 text-primary flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  </svg>
-                  {filterText}
-                </span>
-                <button onClick={handleClearFilter} className="text-xs text-white/50 hover:text-white transition">清除</button>
-              </div>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="text-3xl mb-3">🎭</div>
-                <p className="text-white/50 text-sm mb-2">{filterText ? `${filterText}暂无成员` : '暂无成员'}</p>
-                {filterText ? (
-                  <button onClick={handleClearFilter} className="px-4 py-2 glass rounded-lg text-xs hover:bg-white/10 transition">查看全部</button>
-                ) : (
-                  <button onClick={() => setShowQuickForm(true)} className="px-4 py-2 btn-gradient rounded-lg text-xs">成为第一个</button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="divide-y divide-white/5">
-                  {visibleUsers.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleUserSelect(u)}
-                      className={`w-full p-3 flex items-center gap-3 transition text-left ${selectedUser?.id === u.id ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-white/5'}`}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <img src={u.photos[0]} alt={u.cnName} className={`w-12 h-12 rounded-xl object-cover transition ${selectedUser?.id === u.id ? 'ring-2 ring-primary' : ''}`} loading="lazy" />
-                        {isNewMember(u) && (
-                          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[9px] font-bold bg-gradient-to-r from-pink-500 to-orange-400 rounded-full text-white">NEW</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="font-medium text-sm whitespace-nowrap">{u.cnName}</p>
-                        <p className="text-xs text-white/50 whitespace-nowrap">📍 {u.location.province || u.location.country}</p>
-                      </div>
-                      {selectedUser?.id === u.id && <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />}
-                    </button>
-                  ))}
+        <aside className={`hidden lg:flex flex-col border-l border-white/5 glass-dark flex-shrink-0 transition-all duration-300 relative z-30 ${rightSidebarCollapsed ? 'w-14' : 'w-80 xl:w-96'}`}>
+          {/* 收起/展开按钮 */}
+          <button
+            onClick={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+            className="absolute -left-3 top-1/2 -translate-y-1/2 z-40 w-6 h-16 bg-gradient-to-l from-primary/80 to-secondary/80 hover:from-primary hover:to-secondary rounded-l-full flex items-center justify-center text-white shadow-lg shadow-primary/20 transition-all hover:w-7"
+          >
+            <svg className={`w-4 h-4 transition-transform duration-300 ${rightSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          {!rightSidebarCollapsed ? (
+            <>
+              <div className="p-4 border-b border-white/5">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-white/90">
+                    成员<span className="text-white/40 font-normal ml-1.5 text-sm">({filteredUsers.length})</span>
+                  </h2>
+                  {!hasProfile && (
+                    <button onClick={() => setShowQuickForm(true)} className="text-xs text-primary hover:underline">+ 加入</button>
+                  )}
                 </div>
-                {hasMore && (
-                  <div className="p-4">
-                    <button onClick={handleLoadMore} className="w-full py-2.5 glass rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/10 transition flex items-center justify-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                {filterText && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 rounded-lg bg-primary/20 text-primary flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       </svg>
-                      加载更多 ({filteredUsers.length - visibleCount} 位)
-                    </button>
+                      {filterText}
+                    </span>
+                    <button onClick={handleClearFilter} className="text-xs text-white/50 hover:text-white transition">清除</button>
                   </div>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {filteredUsers.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="text-3xl mb-3">🎭</div>
+                    <p className="text-white/50 text-sm mb-2">{filterText ? `${filterText}暂无成员` : '暂无成员'}</p>
+                    {filterText ? (
+                      <button onClick={handleClearFilter} className="px-4 py-2 glass rounded-lg text-xs hover:bg-white/10 transition">查看全部</button>
+                    ) : (
+                      <button onClick={() => setShowQuickForm(true)} className="px-4 py-2 btn-gradient rounded-lg text-xs">成为第一个</button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-white/5">
+                      {visibleUsers.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => handleUserSelect(u)}
+                          className={`w-full p-3 flex items-center gap-3 transition text-left ${selectedUser?.id === u.id ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-white/5'}`}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <img src={u.photos[0]} alt={u.cnName} className={`w-12 h-12 rounded-xl object-cover transition ${selectedUser?.id === u.id ? 'ring-2 ring-primary' : ''}`} loading="lazy" />
+                            {isNewMember(u) && (
+                              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 flex items-center justify-center shadow-lg animate-pulse">
+                                <span className="text-[8px] font-bold text-white">N</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-sm truncate">{u.cnName}</p>
+                              {isNewMember(u) && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-rose-500/20 to-pink-500/20 text-rose-400 font-medium flex-shrink-0">新人</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white/50 truncate">📍 {u.location.province || u.location.country}</p>
+                          </div>
+                          {selectedUser?.id === u.id && <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                    {hasMore && (
+                      <div className="p-4">
+                        <button onClick={handleLoadMore} className="w-full py-2.5 glass rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/10 transition flex items-center justify-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                          加载更多 ({filteredUsers.length - visibleCount} 位)
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center py-4 gap-3 h-full">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30 flex items-center justify-center">
+                <span className="text-sm font-bold text-gradient">{filteredUsers.length}</span>
+              </div>
+              <div className="flex-1 flex items-center">
+                <span className="text-xs text-white/50 writing-vertical tracking-wider">成员列表</span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                <svg className="w-4 h-4 text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+            </div>
+          )}
         </aside>
       </main>
 

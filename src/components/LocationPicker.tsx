@@ -6,10 +6,12 @@ import {
   getSmartLocation,
   COUNTRIES,
   getProvinces,
-  getCities 
+  getCities,
+  normalizeProvince,
+  normalizeCountry
 } from '@/lib/location'
 
-// 主要城市的预设坐标（用于手动选择时快速获取）
+// 主要城市的预设坐标
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   '北京': { lat: 39.9, lng: 116.4 },
   '上海': { lat: 31.2, lng: 121.5 },
@@ -29,14 +31,6 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   '沈阳': { lat: 41.8, lng: 123.4 },
   '长沙': { lat: 28.2, lng: 113.0 },
   '郑州': { lat: 34.8, lng: 113.7 },
-  '东京': { lat: 35.7, lng: 139.7 },
-  '大阪': { lat: 34.7, lng: 135.5 },
-  '首尔': { lat: 37.6, lng: 127.0 },
-  '纽约': { lat: 40.7, lng: -74.0 },
-  '洛杉矶': { lat: 34.1, lng: -118.2 },
-  '伦敦': { lat: 51.5, lng: -0.1 },
-  '巴黎': { lat: 48.9, lng: 2.4 },
-  '悉尼': { lat: -33.9, lng: 151.2 },
 }
 
 // 省份中心坐标
@@ -89,14 +83,15 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
   const [mode, setMode] = useState<Mode>('auto')
   const [loading, setLoading] = useState(false)
   const [localError, setLocalError] = useState('')
+  const [showMapModal, setShowMapModal] = useState(false)
   
   // 手动选择
-  const [country, setCountry] = useState('中国')
-  const [province, setProvince] = useState('')
-  const [city, setCity] = useState('')
+  const [country, setCountry] = useState(value?.country || '中国')
+  const [province, setProvince] = useState(value?.province || '')
+  const [city, setCity] = useState(value?.city || '')
   
-  // 地图选点
-  const [mapCoords, setMapCoords] = useState<{ lat: number; lng: number } | null>(null)
+  // 地图选点临时数据
+  const [tempLocation, setTempLocation] = useState<LocationInfo | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerRef = useRef<any>(null)
@@ -104,42 +99,55 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
   const provinces = getProvinces()
   const cities = province ? getCities(province) : []
 
-  // 自动获取位置 - 优化超时
+  // 当 value 变化时同步到本地状态
+  useEffect(() => {
+    if (value) {
+      setCountry(value.country || '中国')
+      setProvince(value.province || '')
+      setCity(value.city || '')
+    }
+  }, [value])
+
+  // 自动获取位置
   const handleAutoLocate = async () => {
     setLoading(true)
     setLocalError('')
     
-    const timeoutPromise = new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), 10000) // 10秒超时
-    })
-    
     try {
-      const result = await Promise.race([getSmartLocation(), timeoutPromise])
+      const result = await Promise.race([
+        getSmartLocation(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000))
+      ])
       
       if (result) {
-        onChange(result)
-        setCountry(result.country || '中国')
-        setProvince(result.province || '')
-        setCity(result.city || '')
+        // 标准化并只保留到地级市
+        const normalized: LocationInfo = {
+          lat: result.lat,
+          lng: result.lng,
+          country: normalizeCountry(result.country),
+          province: normalizeProvince(result.province || ''),
+          city: result.city || '',
+        }
+        onChange(normalized)
+        setCountry(normalized.country)
+        setProvince(normalized.province || '')
+        setCity(normalized.city || '')
       } else {
         setLocalError('定位超时，请使用地图选点或手动选择')
-        setMode('map')
       }
     } catch {
       setLocalError('定位失败，请使用地图选点或手动选择')
-      setMode('map')
     } finally {
       setLoading(false)
     }
   }
 
-  // 手动选择 - 使用预设坐标，不调用外部API
+  // 手动选择确认
   const handleManualSelect = () => {
     if (!country) {
       setLocalError('请选择国家')
       return
     }
-    
     if (country === '中国' && !province) {
       setLocalError('请选择省份')
       return
@@ -147,17 +155,10 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
 
     setLocalError('')
     
-    // 获取坐标：优先城市 > 省份 > 随机
     let coords = city ? CITY_COORDS[city] : null
-    if (!coords && province) {
-      coords = PROVINCE_COORDS[province]
-    }
-    if (!coords) {
-      // 默认中国中心 + 随机偏移
-      coords = { lat: 35 + (Math.random() - 0.5) * 10, lng: 105 + (Math.random() - 0.5) * 20 }
-    }
+    if (!coords && province) coords = PROVINCE_COORDS[province]
+    if (!coords) coords = { lat: 35, lng: 105 }
     
-    // 添加随机偏移保护隐私（约 ±5km）
     const offset = () => (Math.random() - 0.5) * 0.1
     
     onChange({
@@ -169,34 +170,35 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
     })
   }
 
-  // 初始化地图选点
+  // 打开地图弹窗
+  const openMapModal = () => {
+    setTempLocation(null)
+    setShowMapModal(true)
+  }
+
+  // 初始化地图弹窗中的地图
   useEffect(() => {
-    if (mode !== 'map' || !mapRef.current || mapInstanceRef.current) return
+    if (!showMapModal || !mapRef.current || mapInstanceRef.current) return
 
     const initMap = async () => {
       const L = (await import('leaflet')).default
       
-      const MAX_ZOOM = 10  // 最大缩放到地级市级别
-      const MIN_ZOOM = 3   // 最小缩放到国家级别
-      
       const map = L.map(mapRef.current!, {
-        center: mapCoords ? [mapCoords.lat, mapCoords.lng] : [35, 105],
-        zoom: 4,
+        center: value ? [value.lat, value.lng] : [35, 105],
+        zoom: value ? 8 : 4,
         zoomControl: true,
-        minZoom: MIN_ZOOM,
-        maxZoom: MAX_ZOOM,
+        minZoom: 3,
+        maxZoom: 10,
       })
 
-      // 使用简洁地图样式，不显示乡镇、铁路等细节
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: MAX_ZOOM,
+        maxZoom: 10,
         subdomains: 'abcd',
       }).addTo(map)
 
-      // 点击地图设置坐标
-      map.on('click', (e: any) => {
+      // 点击地图获取位置
+      map.on('click', async (e: any) => {
         const { lat, lng } = e.latlng
-        setMapCoords({ lat, lng })
         
         if (markerRef.current) {
           markerRef.current.setLatLng([lat, lng])
@@ -204,16 +206,46 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
           markerRef.current = L.marker([lat, lng], {
             icon: L.divIcon({
               className: '',
-              html: `<div style="
-                width: 40px; height: 40px; background: linear-gradient(135deg, #8B5CF6, #EC4899);
-                border-radius: 50%; border: 3px solid white;
-                box-shadow: 0 4px 15px rgba(139,92,246,0.5);
-                display: flex; align-items: center; justify-content: center;
-              ">📍</div>`,
+              html: `<div style="width:40px;height:40px;background:linear-gradient(135deg,#8B5CF6,#EC4899);border-radius:50%;border:3px solid white;box-shadow:0 4px 15px rgba(139,92,246,0.5);display:flex;align-items:center;justify-content:center;">📍</div>`,
               iconSize: [40, 40],
               iconAnchor: [20, 20],
             })
           }).addTo(map)
+        }
+
+        // 反向地理编码获取地址（只到地级市）
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=8`,
+            { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
+          )
+          if (res.ok) {
+            const data = await res.json()
+            const addr = data.address || {}
+            setTempLocation({
+              lat: Math.round(lat * 100) / 100,
+              lng: Math.round(lng * 100) / 100,
+              country: normalizeCountry(addr.country || '未知'),
+              province: normalizeProvince(addr.state || addr.province || ''),
+              city: addr.city || addr.municipality || '',
+            })
+          } else {
+            setTempLocation({
+              lat: Math.round(lat * 100) / 100,
+              lng: Math.round(lng * 100) / 100,
+              country: '未知',
+              province: '',
+              city: '',
+            })
+          }
+        } catch {
+          setTempLocation({
+            lat: Math.round(lat * 100) / 100,
+            lng: Math.round(lng * 100) / 100,
+            country: '未知',
+            province: '',
+            city: '',
+          })
         }
       })
 
@@ -229,29 +261,24 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
         markerRef.current = null
       }
     }
-  }, [mode])
+  }, [showMapModal])
 
   // 确认地图选点
   const handleMapConfirm = () => {
-    if (!mapCoords) {
+    if (!tempLocation) {
       setLocalError('请在地图上点击选择位置')
       return
     }
-    
-    onChange({
-      lat: Math.round(mapCoords.lat * 100) / 100,
-      lng: Math.round(mapCoords.lng * 100) / 100,
-      country: '中国',
-      province: '',
-      city: '',
-    })
+    onChange(tempLocation)
+    setCountry(tempLocation.country)
+    setProvince(tempLocation.province || '')
+    setCity(tempLocation.city || '')
+    setShowMapModal(false)
   }
 
   // 省份变化时清空城市
-  useEffect(() => {
-    setCity('')
-  }, [province])
-
+  useEffect(() => { setCity('') }, [province])
+  
   // 国家变化时清空省市
   useEffect(() => {
     if (country !== '中国') {
@@ -277,7 +304,7 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
         </button>
         <button
           type="button"
-          onClick={() => setMode('map')}
+          onClick={() => { setMode('map'); openMapModal() }}
           className={`flex-1 py-2 px-2 rounded-lg text-xs sm:text-sm transition ${
             mode === 'map' ? 'bg-primary/20 text-primary border border-primary/30' : 'glass text-white/60 hover:text-white'
           }`}
@@ -298,19 +325,29 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
       {/* 已选择的位置显示 */}
       {value && (
         <div className="glass rounded-xl p-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
             <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white truncate">
-              {[value.city, value.province, value.country].filter(Boolean).join(', ') || `${value.lat.toFixed(2)}, ${value.lng.toFixed(2)}`}
+              {[value.city, value.province, value.country].filter(Boolean).join(', ')}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-white/40 hover:text-white/70 transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
 
+      {/* 自动定位 */}
       {mode === 'auto' && !value && (
         <button
           type="button"
@@ -334,26 +371,7 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
         </button>
       )}
 
-      {mode === 'map' && (
-        <div className="space-y-3">
-          <div 
-            ref={mapRef} 
-            className="w-full h-48 rounded-xl overflow-hidden border border-white/10"
-            style={{ background: '#1E293B' }}
-          />
-          <p className="text-xs text-white/50 text-center">点击地图选择你的位置</p>
-          {mapCoords && (
-            <button
-              type="button"
-              onClick={handleMapConfirm}
-              className="w-full py-2.5 btn-gradient rounded-xl text-sm font-medium"
-            >
-              确认此位置
-            </button>
-          )}
-        </div>
-      )}
-
+      {/* 手动选择 */}
       {mode === 'manual' && (
         <div className="space-y-3">
           <select
@@ -404,9 +422,65 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
         </div>
       )}
 
+      {/* 地图选点提示 */}
+      {mode === 'map' && !value && (
+        <button
+          type="button"
+          onClick={openMapModal}
+          className="w-full py-4 glass hover:bg-white/10 rounded-xl transition flex flex-col items-center justify-center gap-2"
+        >
+          <span className="text-2xl">🗺️</span>
+          <span className="text-white font-medium">点击打开地图选点</span>
+        </button>
+      )}
+
       {displayError && (
         <div className="p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-xs">
           {displayError}
+        </div>
+      )}
+
+      {/* 地图弹窗 */}
+      {showMapModal && (
+        <div className="fixed inset-0 bg-dark/90 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={() => setShowMapModal(false)}>
+          <div className="w-full max-w-2xl glass-dark rounded-2xl overflow-hidden animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <h3 className="font-semibold text-white">选择位置</h3>
+              <button onClick={() => setShowMapModal(false)} className="w-8 h-8 rounded-full glass flex items-center justify-center text-white/60 hover:text-white">
+                ✕
+              </button>
+            </div>
+            <div ref={mapRef} className="w-full h-80 sm:h-96" style={{ background: '#1E293B' }} />
+            <div className="p-4 space-y-3">
+              {tempLocation ? (
+                <div className="glass rounded-xl p-3 flex items-center gap-3">
+                  <span className="text-lg">📍</span>
+                  <span className="text-sm text-white">
+                    {[tempLocation.city, tempLocation.province, tempLocation.country].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-center text-white/50 text-sm">点击地图选择位置</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMapModal(false)}
+                  className="flex-1 py-2.5 glass rounded-xl text-sm text-white/70 hover:text-white"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMapConfirm}
+                  disabled={!tempLocation}
+                  className="flex-1 py-2.5 btn-gradient rounded-xl text-sm font-medium disabled:opacity-50"
+                >
+                  确认选择
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
