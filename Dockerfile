@@ -1,18 +1,25 @@
 # 使用 DaoCloud 镜像源
 FROM docker.m.daocloud.io/library/node:18-alpine AS base
 
+# 配置 Alpine 国内镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # 安装依赖阶段
 FROM base AS deps
-RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
+
+# 安装必要的系统依赖
+RUN apk update && apk add --no-cache libc6-compat openssl
 
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # 构建阶段
 FROM base AS builder
-RUN apk add --no-cache openssl
 WORKDIR /app
+
+RUN apk update && apk add --no-cache openssl
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -24,8 +31,9 @@ RUN npm run build
 
 # 生产阶段
 FROM base AS runner
-RUN apk add --no-cache openssl
 WORKDIR /app
+
+RUN apk update && apk add --no-cache openssl
 
 ENV NODE_ENV=production
 

@@ -149,8 +149,8 @@ export default function UserCard({ user, onClose }: UserCardProps) {
                   </svg>
                   <span className="text-sm">
                     {[user.location.city, user.location.province, user.location.country]
-                      .filter(Boolean)
-                      .join(' · ')}
+                      .filter(v => v && v !== '未知')
+                      .join(' · ') || '中国'}
                   </span>
                 </div>
               </div>

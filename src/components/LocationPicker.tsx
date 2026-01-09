@@ -188,12 +188,14 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
         zoom: value ? 8 : 4,
         zoomControl: true,
         minZoom: 3,
-        maxZoom: 10,
+        maxZoom: 18,
+        attributionControl: false, // 隐藏 Leaflet 标志
       })
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 10,
-        subdomains: 'abcd',
+      // 使用高德地图瓦片服务 - style=8 纯净地图（无POI标注）
+      L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+        maxZoom: 18,
+        subdomains: ['1', '2', '3', '4'],
       }).addTo(map)
 
       // 点击地图获取位置
@@ -213,27 +215,36 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
           }).addTo(map)
         }
 
-        // 反向地理编码获取地址（只到地级市）
+        // 使用服务端API进行反向地理编码
         try {
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=8`,
-            { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
+            `/api/geocode?lng=${lng}&lat=${lat}`
           )
           if (res.ok) {
             const data = await res.json()
-            const addr = data.address || {}
-            setTempLocation({
-              lat: Math.round(lat * 100) / 100,
-              lng: Math.round(lng * 100) / 100,
-              country: normalizeCountry(addr.country || '未知'),
-              province: normalizeProvince(addr.state || addr.province || ''),
-              city: addr.city || addr.municipality || '',
-            })
+            if (data.status === '1' && data.regeocode) {
+              const addr = data.regeocode.addressComponent || {}
+              setTempLocation({
+                lat: Math.round(lat * 100) / 100,
+                lng: Math.round(lng * 100) / 100,
+                country: addr.country || '中国',
+                province: addr.province || '',
+                city: addr.city || addr.district || '',
+              })
+            } else {
+              setTempLocation({
+                lat: Math.round(lat * 100) / 100,
+                lng: Math.round(lng * 100) / 100,
+                country: '中国',
+                province: '',
+                city: '',
+              })
+            }
           } else {
             setTempLocation({
               lat: Math.round(lat * 100) / 100,
               lng: Math.round(lng * 100) / 100,
-              country: '未知',
+              country: '中国',
               province: '',
               city: '',
             })
@@ -242,7 +253,7 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
           setTempLocation({
             lat: Math.round(lat * 100) / 100,
             lng: Math.round(lng * 100) / 100,
-            country: '未知',
+            country: '中国',
             province: '',
             city: '',
           })

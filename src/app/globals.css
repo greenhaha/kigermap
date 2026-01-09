@@ -99,6 +99,11 @@ body {
   z-index: 1;
 }
 
+/* 隐藏 Leaflet 默认 attribution */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 /* 确保地图控件不会遮挡弹窗 */
 .leaflet-pane {
   z-index: 1;

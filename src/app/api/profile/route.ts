@@ -23,6 +23,16 @@ export async function GET() {
     return NextResponse.json({ profile: null })
   }
 
+  // 安全解析 aiPersonality（兼容旧数据）
+  let aiPersonality = null
+  if ((profile as any).aiPersonality) {
+    try {
+      aiPersonality = JSON.parse((profile as any).aiPersonality)
+    } catch {
+      aiPersonality = null
+    }
+  }
+
   return NextResponse.json({
     profile: {
       id: profile.id,
@@ -37,6 +47,7 @@ export async function GET() {
         city: profile.city,
       },
       socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+      aiPersonality,
       shareCode: profile.shareCode,
       createdAt: profile.createdAt.toISOString(),
     },
@@ -53,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cnName, introduction, photos, location, socialLinks } = body
+    const { cnName, introduction, photos, location, socialLinks, aiPersonality } = body
     const accountId = (session.user as any).id
 
     // 验证账户是否存在
@@ -85,21 +96,34 @@ export async function POST(request: NextRequest) {
 
     const ossFolder = `user_${accountId}`
     const socialLinksJson = socialLinks ? JSON.stringify(socialLinks) : null
+    const aiPersonalityJson = aiPersonality ? JSON.stringify(aiPersonality) : null
+
+    // 构建更新数据（兼容旧数据库结构）
+    const baseData = {
+      cnName: cnName.trim(),
+      introduction: introduction.trim(),
+      photos: JSON.stringify(photos),
+      lat: location.lat,
+      lng: location.lng,
+      country: location.country || '中国',
+      province: location.province,
+      city: location.city,
+      socialLinks: socialLinksJson,
+    }
 
     if (existing) {
+      // 尝试更新 aiPersonality，如果字段不存在则忽略
+      let updateData: any = { ...baseData }
+      try {
+        // 检查是否支持 aiPersonality 字段
+        if (aiPersonalityJson !== null) {
+          updateData.aiPersonality = aiPersonalityJson
+        }
+      } catch {}
+
       const profile = await prisma.kigurumiProfile.update({
         where: { accountId },
-        data: {
-          cnName: cnName.trim(),
-          introduction: introduction.trim(),
-          photos: JSON.stringify(photos),
-          lat: location.lat,
-          lng: location.lng,
-          country: location.country || '未知',
-          province: location.province,
-          city: location.city,
-          socialLinks: socialLinksJson,
-        },
+        data: updateData,
       })
 
       return NextResponse.json({
@@ -114,25 +138,26 @@ export async function POST(request: NextRequest) {
             city: profile.city,
           },
           socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+          aiPersonality: (profile as any).aiPersonality ? JSON.parse((profile as any).aiPersonality) : null,
         },
         message: '资料已更新',
       })
     } else {
+      // 构建创建数据
+      let createData: any = {
+        ...baseData,
+        accountId,
+        shareCode: generateShareCode(),
+        ossFolder,
+      }
+      
+      // 尝试添加 aiPersonality
+      if (aiPersonalityJson !== null) {
+        createData.aiPersonality = aiPersonalityJson
+      }
+
       const profile = await prisma.kigurumiProfile.create({
-        data: {
-          accountId,
-          cnName: cnName.trim(),
-          introduction: introduction.trim(),
-          photos: JSON.stringify(photos),
-          lat: location.lat,
-          lng: location.lng,
-          country: location.country || '未知',
-          province: location.province,
-          city: location.city,
-          socialLinks: socialLinksJson,
-          shareCode: generateShareCode(),
-          ossFolder,
-        },
+        data: createData,
       })
 
       return NextResponse.json({
@@ -147,6 +172,7 @@ export async function POST(request: NextRequest) {
             city: profile.city,
           },
           socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+          aiPersonality: (profile as any).aiPersonality ? JSON.parse((profile as any).aiPersonality) : null,
         },
         message: '资料已创建',
       })

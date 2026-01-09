@@ -5,6 +5,9 @@ const nextConfig = {
     domains: ['greenhaha.oss-cn-beijing.aliyuncs.com'],
     unoptimized: false,
   },
+  env: {
+    NEXT_PUBLIC_AMAP_KEY: process.env.NEXT_PUBLIC_AMAP_KEY,
+  },
   async headers() {
     return [
       {

@@ -15,6 +15,13 @@ const Map = dynamic(() => import('@/components/Map'), { ssr: false })
 
 const PAGE_SIZE = 20
 
+// 辅助函数：获取显示用的位置文本，过滤掉"未知"
+function getDisplayLocation(location: { province?: string; country?: string; city?: string }): string {
+  const province = location.province && location.province !== '未知' ? location.province : ''
+  const country = location.country && location.country !== '未知' ? location.country : ''
+  return province || country || '中国'
+}
+
 export default function HomePage() {
   const { data: session, update: updateSession } = useSession()
   const [locale, setLocale] = useState<Locale>('zh')
@@ -97,14 +104,12 @@ export default function HomePage() {
 
   const handleFilter = (country: string | null, province: string | null, shouldClose?: boolean) => {
     let filtered = users
-    if (country) {
-      filtered = filtered.filter(u => u.location.country === country)
-    }
+    // 现在只按省份/地区筛选
     if (province) {
-      filtered = filtered.filter(u => u.location.province === province)
+      filtered = filtered.filter(u => u.location.province === province || u.location.country === province)
     }
     setFilteredUsers(filtered)
-    setCurrentFilter({ country, province })
+    setCurrentFilter({ country: null, province })
     setVisibleCount(PAGE_SIZE)
     if (shouldClose) {
       setShowMobileFilter(false)
@@ -158,13 +163,8 @@ export default function HomePage() {
 
   const sessionUser = session?.user as any
   const hasProfile = sessionUser?.hasProfile
-  const countryCount = new Set(stats.map(s => s.country)).size
 
-  const filterText = currentFilter.country
-    ? (currentFilter.province
-        ? `${currentFilter.country} · ${currentFilter.province}`
-        : currentFilter.country)
-    : null
+  const filterText = currentFilter.province || null
 
   return (
     <div className="h-screen flex flex-col relative overflow-hidden">
@@ -243,15 +243,9 @@ export default function HomePage() {
           {!leftSidebarCollapsed ? (
             <>
               <div className="p-4 border-b border-white/5">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="glass rounded-xl p-3">
-                    <div className="text-xl font-bold text-gradient">{users.length}</div>
-                    <div className="text-xs text-white/50">成员</div>
-                  </div>
-                  <div className="glass rounded-xl p-3">
-                    <div className="text-xl font-bold text-gradient">{countryCount}</div>
-                    <div className="text-xs text-white/50">国家/地区</div>
-                  </div>
+                <div className="glass rounded-xl p-3 text-center">
+                  <div className="text-xl font-bold text-gradient">{users.length}</div>
+                  <div className="text-xs text-white/50">位成员</div>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
@@ -316,7 +310,7 @@ export default function HomePage() {
                     <img src={user.photos[0]} alt={user.cnName} className="w-10 h-10 rounded-lg object-cover" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{user.cnName}</p>
-                      <p className="text-xs text-white/50 truncate">📍 {user.location.province || user.location.country}</p>
+                      <p className="text-xs text-white/50 truncate">📍 {getDisplayLocation(user.location)}</p>
                     </div>
                   </button>
                 ))}
@@ -340,7 +334,7 @@ export default function HomePage() {
                 <img src={selectedUser.photos[0]} alt={selectedUser.cnName} className="w-8 h-8 rounded-lg object-cover border-2 border-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{selectedUser.cnName}</p>
-                  <p className="text-[10px] text-white/50 truncate">{selectedUser.location.province || selectedUser.location.country}</p>
+                  <p className="text-[10px] text-white/50 truncate">{getDisplayLocation(selectedUser.location)}</p>
                 </div>
                 <button onClick={handleClearSelection} className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition flex-shrink-0">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,7 +438,7 @@ export default function HomePage() {
                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-gradient-to-r from-rose-500/20 to-pink-500/20 text-rose-400 font-medium flex-shrink-0">新人</span>
                               )}
                             </div>
-                            <p className="text-xs text-white/50 truncate">📍 {u.location.province || u.location.country}</p>
+                            <p className="text-xs text-white/50 truncate">📍 {getDisplayLocation(u.location)}</p>
                           </div>
                           {selectedUser?.id === u.id && <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />}
                         </button>
@@ -503,15 +497,9 @@ export default function HomePage() {
               <button onClick={() => setShowMobileFilter(false)} className="w-8 h-8 rounded-full glass flex items-center justify-center text-sm">✕</button>
             </div>
             <div className="px-4 pb-3">
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="glass rounded-xl p-2.5">
-                  <div className="text-lg font-bold text-gradient">{users.length}</div>
-                  <div className="text-[10px] text-white/50">位成员</div>
-                </div>
-                <div className="glass rounded-xl p-2.5">
-                  <div className="text-lg font-bold text-gradient">{countryCount}</div>
-                  <div className="text-[10px] text-white/50">个国家</div>
-                </div>
+              <div className="glass rounded-xl p-2.5 text-center">
+                <div className="text-lg font-bold text-gradient">{users.length}</div>
+                <div className="text-[10px] text-white/50">位成员</div>
               </div>
             </div>
             {filterText && (
@@ -575,7 +563,7 @@ export default function HomePage() {
                           <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/20 to-transparent" />
                           <div className="absolute bottom-0 left-0 right-0 p-2.5">
                             <p className="font-medium text-sm leading-tight">{u.cnName}</p>
-                            <p className="text-[10px] text-white/60 mt-0.5">📍 {u.location.province || u.location.country}</p>
+                            <p className="text-[10px] text-white/60 mt-0.5">📍 {getDisplayLocation(u.location)}</p>
                           </div>
                           {isNewMember(u) && (
                             <span className="absolute top-2 left-2 px-1.5 py-0.5 text-[9px] font-bold bg-gradient-to-r from-pink-500 to-orange-400 rounded-full text-white">NEW</span>

@@ -21,17 +21,38 @@ export function toKigurumiUser(profile: any) {
       socialLinks = null
     }
   }
+
+  let aiPersonality = null
+  if (profile.aiPersonality) {
+    try {
+      aiPersonality = typeof profile.aiPersonality === 'string'
+        ? JSON.parse(profile.aiPersonality)
+        : profile.aiPersonality
+    } catch {
+      aiPersonality = null
+    }
+  }
   
   // 标准化国家和省份名称
   let country = normalizeCountry(profile.country || '')
   let province = normalizeProvince(profile.province || '')
+  
+  // 如果国家是"未知"，根据省份判断
+  if (country === '未知' || !country) {
+    // 如果有省份信息，默认为中国
+    if (province) {
+      country = '中国'
+    } else {
+      country = '中国' // 默认中国
+    }
+  }
   
   // 如果省份是中国省份但国家不是中国，修正国家为中国
   if (isChineseProvince(province) && country !== '中国') {
     country = '中国'
   }
   
-  return {
+  const result: any = {
     id: profile.id,
     cnName: profile.cnName || '',
     introduction: profile.introduction || '',
@@ -47,4 +68,10 @@ export function toKigurumiUser(profile: any) {
     createdAt: profile.createdAt?.toISOString?.() || profile.createdAt,
     shareCode: profile.shareCode || '',
   }
+  
+  if (aiPersonality) {
+    result.aiPersonality = aiPersonality
+  }
+  
+  return result
 }

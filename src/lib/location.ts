@@ -50,7 +50,7 @@ export async function getLocationByIP(): Promise<LocationInfo | null> {
           return {
             lat: data.latitude,
             lng: data.longitude,
-            country: data.country_name || data.country || '未知',
+            country: data.country_name || data.country || '中国',
             province: data.region || data.regionName || '',
             city: data.city || '',
           }
@@ -62,7 +62,7 @@ export async function getLocationByIP(): Promise<LocationInfo | null> {
           return {
             lat: data.lat,
             lng: data.lon,
-            country: data.country || '未知',
+            country: data.country || '中国',
             province: data.regionName || '',
             city: data.city || '',
           }
@@ -117,88 +117,79 @@ export function fuzzyCoordinates(lat: number, lng: number): { lat: number; lng: 
   }
 }
 
-// 反向地理编码 - 使用 Nominatim (免费，支持国内外)
+// 反向地理编码 - 使用服务端API代理高德地图
 // 只返回地级市级别信息，去掉县级市以下所有信息
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> {
-  // 使用 zoom=8 获取地级市级别信息（不包含县级市/区/街道）
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh-CN&addressdetails=1&zoom=8`,
-    { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
-  )
-  
-  if (!res.ok) throw new Error('地理编码失败')
-  
-  const data = await res.json()
-  const addr = data.address || {}
-  
   // 模糊化坐标
   const fuzzy = fuzzyCoordinates(lat, lng)
   
-  // 只获取地级市级别信息
-  // city: 地级市 (如 大连市)
-  // state/province: 省份
-  let city = addr.city || addr.municipality || ''
-  let province = addr.state || addr.province || ''
-  let country = addr.country || '未知'
-  
-  // 港澳台特殊处理：API 可能返回它们作为独立国家/地区
-  const countryLower = country.toLowerCase()
-  const isHongKong = countryLower.includes('hong kong') || country.includes('香港')
-  const isMacau = countryLower.includes('macau') || countryLower.includes('macao') || country.includes('澳门')
-  const isTaiwan = countryLower.includes('taiwan') || country.includes('台湾')
-  
-  if (isHongKong) {
-    country = '中国'
-    province = '香港'
-    city = '香港'
-  } else if (isMacau) {
-    country = '中国'
-    province = '澳门'
-    city = '澳门'
-  } else if (isTaiwan) {
-    country = '中国'
-    province = '台湾'
-    // 保留原有城市信息
-  }
-  
-  // 对于直辖市特殊处理
-  const isDirectCity = ['北京', '上海', '天津', '重庆'].some(d => province.includes(d))
-  if (isDirectCity) {
-    if (!city) city = province.replace('市', '')
-  }
-  
-  // 如果 city 还是空的，尝试从省份获取
-  if (!city && province) {
-    // 对于一些特殊情况，使用省份名作为城市
-    city = ''
-  }
+  try {
+    const res = await fetch(`/api/geocode?lng=${lng}&lat=${lat}`)
+    
+    if (!res.ok) {
+      return {
+        lat: fuzzy.lat,
+        lng: fuzzy.lng,
+        country: '中国',
+        province: '',
+        city: '',
+      }
+    }
+    
+    const data = await res.json()
+    
+    if (data.status !== '1' || !data.regeocode) {
+      return {
+        lat: fuzzy.lat,
+        lng: fuzzy.lng,
+        country: '中国',
+        province: '',
+        city: '',
+      }
+    }
+    
+    const addr = data.regeocode.addressComponent || {}
+    
+    let country = addr.country || '中国'
+    let province = addr.province || ''
+    let city = addr.city || addr.district || ''
+    
+    // 直辖市特殊处理
+    const directCities = ['北京', '上海', '天津', '重庆']
+    if (directCities.some(d => province.includes(d)) && !city) {
+      city = province
+    }
 
-  // 只返回地级市级别信息，不包含 district（县/区）
-  return {
-    lat: fuzzy.lat,
-    lng: fuzzy.lng,
-    country: country,
-    province: province,
-    city: city,
-    // 不返回 district，保护隐私
+    return {
+      lat: fuzzy.lat,
+      lng: fuzzy.lng,
+      country,
+      province,
+      city,
+    }
+  } catch (e) {
+    console.error('reverseGeocode error:', e)
+    return {
+      lat: fuzzy.lat,
+      lng: fuzzy.lng,
+      country: '中国',
+      province: '',
+      city: '',
+    }
   }
 }
 
-// 正向地理编码 - 根据地址获取坐标
+// 正向地理编码 - 使用服务端API代理高德地图
 export async function geocode(address: string): Promise<LocationInfo | null> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&accept-language=zh-CN&limit=1`,
-    { headers: { 'User-Agent': 'KigurumiMap/1.0' } }
-  )
+  const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`)
   
   if (!res.ok) return null
   
   const data = await res.json()
-  if (!data.length) return null
+  if (data.status !== '1' || !data.geocodes?.length) return null
   
-  const result = data[0]
-  const lat = parseFloat(result.lat)
-  const lng = parseFloat(result.lon)
+  const result = data.geocodes[0]
+  const [lng, lat] = result.location.split(',').map(Number)
   
   // 获取详细地址信息
   return reverseGeocode(lat, lng)
@@ -357,7 +348,7 @@ export function normalizeProvince(province: string): string {
 
 // 标准化国家名称
 export function normalizeCountry(country: string): string {
-  if (!country) return '未知'
+  if (!country) return '中国'
   const lower = country.toLowerCase().trim()
   return COUNTRY_NAME_MAP[lower] || country
 }

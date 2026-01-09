@@ -66,9 +66,12 @@ const Map = forwardRef<MapRef, MapProps>(({
     if (mapInstanceRef.current) return
     
     const container = mapContainerRef.current
+    // 清理可能存在的旧实例
     if ((container as any)._leaflet_id) {
       delete (container as any)._leaflet_id
     }
+
+    let isMounted = true
 
     ;(window as any).popupSlider = (popupId: string, direction: number) => {
       const popup = document.getElementById(popupId)
@@ -89,8 +92,12 @@ const Map = forwardRef<MapRef, MapProps>(({
 
     const initMap = async () => {
       try {
+        if (!isMounted || mapInstanceRef.current) return
+        
         const L = (await import('leaflet')).default
         await import('leaflet.markercluster')
+        
+        if (!isMounted || mapInstanceRef.current) return
         
         delete (L.Icon.Default.prototype as any)._getIconUrl
         L.Icon.Default.mergeOptions({
@@ -112,27 +119,14 @@ const Map = forwardRef<MapRef, MapProps>(({
 
         L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-        // 根据语言选择地图图层
-        // 使用简洁样式地图，只显示国家、省份、地级市标签，不显示乡镇、铁路等细节
-        if (locale === 'zh') {
-          // 高德地图简洁版 - style=7 是简洁样式，不显示POI和细节
-          L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}', {
-            maxZoom: MAX_ZOOM,
-            subdomains: '1234',
-          }).addTo(map)
-        } else if (locale === 'ja') {
-          // 日语使用 CartoDB Positron（简洁样式）
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: MAX_ZOOM,
-            subdomains: 'abcd',
-          }).addTo(map)
-        } else {
-          // 英文及其他语言使用 CartoDB Positron（简洁样式，无铁路等细节）
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: MAX_ZOOM,
-            subdomains: 'abcd',
-          }).addTo(map)
-        }
+        // 使用高德地图瓦片服务
+        // style=7 为标准地图，style=8 为纯净地图（无POI）
+        // 使用矢量瓦片服务器 webrd0x
+        const lang = locale === 'zh' ? 'zh_cn' : 'en'
+        L.tileLayer(`https://webrd0{s}.is.autonavi.com/appmaptile?lang=${lang}&size=1&scale=1&style=8&x={x}&y={y}&z={z}`, {
+          maxZoom: 18,
+          subdomains: ['1', '2', '3', '4'],
+        }).addTo(map)
 
         // 创建聚合图层 - 使用默认样式但自定义颜色
         markerClusterRef.current = (L as any).markerClusterGroup({
@@ -187,11 +181,14 @@ const Map = forwardRef<MapRef, MapProps>(({
     initMap()
 
     return () => {
+      isMounted = false
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
       }
       markerClusterRef.current = null
+      markersRef.current.clear()
+      userCoordsRef.current.clear()
       setIsReady(false)
     }
   }, [locale])  // 当语言变化时重新初始化地图
@@ -356,7 +353,9 @@ const Map = forwardRef<MapRef, MapProps>(({
 Map.displayName = 'Map'
 
 function createPopupContent(user: KigurumiUser): string {
-  const location = user.location.province || user.location.country
+  // 过滤掉"未知"，优先显示省份，其次城市，最后国家
+  let location = user.location.province || user.location.city || user.location.country || ''
+  if (location === '未知') location = '中国'
   const uniqueId = `popup-${user.id}`
   const hasMultiplePhotos = user.photos.length > 1
 
