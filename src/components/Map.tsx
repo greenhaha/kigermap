@@ -31,6 +31,7 @@ const Map = forwardRef<MapRef, MapProps>(({
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new globalThis.Map())
+  const userCoordsRef = useRef<Map<string, { lat: number; lng: number }>>(new globalThis.Map())  // 保存用户偏移后的坐标
   const markerClusterRef = useRef<any>(null)
   const selectedMarkerRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
@@ -42,7 +43,9 @@ const Map = forwardRef<MapRef, MapProps>(({
   useImperativeHandle(ref, () => ({
     flyToUser: (user: KigurumiUser) => {
       if (mapInstanceRef.current && user) {
-        mapInstanceRef.current.flyTo([user.location.lat, user.location.lng], MAX_ZOOM, {
+        // 使用保存的偏移坐标
+        const coords = userCoordsRef.current.get(user.id) || { lat: user.location.lat, lng: user.location.lng }
+        mapInstanceRef.current.flyTo([coords.lat, coords.lng], MAX_ZOOM, {
           duration: 1.5,
           easeLinearity: 0.25
         })
@@ -210,6 +213,7 @@ const Map = forwardRef<MapRef, MapProps>(({
     // 清除聚合图层
     clusterGroup.clearLayers()
     markersRef.current.clear()
+    userCoordsRef.current.clear()
 
     if (users.length === 0) return
 
@@ -281,12 +285,15 @@ const Map = forwardRef<MapRef, MapProps>(({
         let lat = user.location.lat
         let lng = user.location.lng
         
-        // 如果同一区域有多个用户，添加随机偏移分散显示
-        if (needsSpread && !isSelected) {
+        // 如果同一区域有多个用户，添加随机偏移分散显示（包括选中用户）
+        if (needsSpread) {
           const offset = getStableOffset(user.id, index, totalInGroup)
           lat += offset.latOffset
           lng += offset.lngOffset
         }
+        
+        // 保存用户的偏移坐标
+        userCoordsRef.current.set(user.id, { lat, lng })
         
         const marker = L.marker([lat, lng], {
           icon: createIcon(user.photos[0] || '', isSelected),
@@ -303,21 +310,10 @@ const Map = forwardRef<MapRef, MapProps>(({
         marker.on('click', () => onUserClick?.(user))
         
         if (isSelected) {
-          // 选中的用户单独显示在地图上，不加入聚合，使用原始位置
-          const selectedMarker = L.marker([user.location.lat, user.location.lng], {
-            icon: createIcon(user.photos[0] || '', true),
-          })
-          selectedMarker.bindPopup(createPopupContent(user), {
-            className: 'custom-popup',
-            closeButton: false,
-            offset: [0, -20],
-            maxWidth: 320,
-            minWidth: 280,
-          })
-          selectedMarker.on('click', () => onUserClick?.(user))
-          selectedMarker.addTo(map)
-          selectedMarkerRef.current = selectedMarker
-          markersRef.current.set(user.id, selectedMarker)
+          // 选中的用户单独显示在地图上，不加入聚合，使用偏移后的位置
+          marker.addTo(map)
+          selectedMarkerRef.current = marker
+          markersRef.current.set(user.id, marker)
         } else {
           clusterGroup.addLayer(marker)
           markersRef.current.set(user.id, marker)
@@ -330,7 +326,9 @@ const Map = forwardRef<MapRef, MapProps>(({
   useEffect(() => {
     if (!isReady || !mapInstanceRef.current || !selectedUser) return
 
-    mapInstanceRef.current.flyTo([selectedUser.location.lat, selectedUser.location.lng], MAX_ZOOM, {
+    // 使用保存的偏移坐标
+    const coords = userCoordsRef.current.get(selectedUser.id) || { lat: selectedUser.location.lat, lng: selectedUser.location.lng }
+    mapInstanceRef.current.flyTo([coords.lat, coords.lng], MAX_ZOOM, {
       duration: 1,
     })
 

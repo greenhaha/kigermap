@@ -328,7 +328,7 @@ export default function HomePage() {
           </div>
 
           {selectedUser && (
-            <div className="absolute top-3 left-3 z-[25] animate-fade-in">
+            <div className="absolute top-16 sm:top-3 left-3 z-[25] animate-fade-in">
               <div className="glass-dark rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg max-w-[200px]">
                 <img src={selectedUser.photos[0]} alt={selectedUser.cnName} className="w-8 h-8 rounded-lg object-cover border-2 border-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
