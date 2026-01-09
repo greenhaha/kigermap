@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { KigurumiUser } from '@/types'
 import { shareToQQ, shareToQzone, copyShareLink } from '@/lib/share'
+import AIChatModal from './AIChatModal'
 
 interface UserCardProps {
   user: KigurumiUser
@@ -14,6 +15,7 @@ export default function UserCard({ user, onClose }: UserCardProps) {
   const [copied, setCopied] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   useEffect(() => {
     // 触发入场动画
@@ -216,6 +218,17 @@ export default function UserCard({ user, onClose }: UserCardProps) {
                 >
                   查看完整主页 →
                 </a>
+
+                {/* AI聊天按钮 */}
+                <button
+                  onClick={() => setShowChat(true)}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-cyan-500/30 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  和 TA 聊天 ✨
+                </button>
               </div>
             </div>
           </div>
@@ -224,6 +237,11 @@ export default function UserCard({ user, onClose }: UserCardProps) {
         {/* 装饰元素 */}
         <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl" />
       </div>
+
+      {/* AI聊天模态框 */}
+      {showChat && (
+        <AIChatModal user={user} onClose={() => setShowChat(false)} />
+      )}
     </div>
   )
 }

@@ -21,6 +21,17 @@ export function toKigurumiUser(profile: any) {
       socialLinks = null
     }
   }
+
+  let aiPersonality = null
+  if (profile.aiPersonality) {
+    try {
+      aiPersonality = typeof profile.aiPersonality === 'string'
+        ? JSON.parse(profile.aiPersonality)
+        : profile.aiPersonality
+    } catch {
+      aiPersonality = null
+    }
+  }
   
   // 标准化国家和省份名称
   let country = normalizeCountry(profile.country || '')
@@ -44,6 +55,7 @@ export function toKigurumiUser(profile: any) {
       city: profile.city || '',
     },
     socialLinks,
+    aiPersonality,
     createdAt: profile.createdAt?.toISOString?.() || profile.createdAt,
     shareCode: profile.shareCode || '',
   }

@@ -37,6 +37,7 @@ export async function GET() {
         city: profile.city,
       },
       socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+      aiPersonality: profile.aiPersonality ? JSON.parse(profile.aiPersonality) : null,
       shareCode: profile.shareCode,
       createdAt: profile.createdAt.toISOString(),
     },
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cnName, introduction, photos, location, socialLinks } = body
+    const { cnName, introduction, photos, location, socialLinks, aiPersonality } = body
     const accountId = (session.user as any).id
 
     // 验证账户是否存在
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
 
     const ossFolder = `user_${accountId}`
     const socialLinksJson = socialLinks ? JSON.stringify(socialLinks) : null
+    const aiPersonalityJson = aiPersonality ? JSON.stringify(aiPersonality) : null
 
     if (existing) {
       const profile = await prisma.kigurumiProfile.update({
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
           province: location.province,
           city: location.city,
           socialLinks: socialLinksJson,
+          aiPersonality: aiPersonalityJson,
         },
       })
 
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
             city: profile.city,
           },
           socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+          aiPersonality: profile.aiPersonality ? JSON.parse(profile.aiPersonality) : null,
         },
         message: '资料已更新',
       })
@@ -130,6 +134,7 @@ export async function POST(request: NextRequest) {
           province: location.province,
           city: location.city,
           socialLinks: socialLinksJson,
+          aiPersonality: aiPersonalityJson,
           shareCode: generateShareCode(),
           ossFolder,
         },
@@ -147,6 +152,7 @@ export async function POST(request: NextRequest) {
             city: profile.city,
           },
           socialLinks: profile.socialLinks ? JSON.parse(profile.socialLinks) : null,
+          aiPersonality: profile.aiPersonality ? JSON.parse(profile.aiPersonality) : null,
         },
         message: '资料已创建',
       })

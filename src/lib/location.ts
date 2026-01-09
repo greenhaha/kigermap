@@ -138,7 +138,28 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
   // city: 地级市 (如 大连市)
   // state/province: 省份
   let city = addr.city || addr.municipality || ''
-  const province = addr.state || addr.province || ''
+  let province = addr.state || addr.province || ''
+  let country = addr.country || '未知'
+  
+  // 港澳台特殊处理：API 可能返回它们作为独立国家/地区
+  const countryLower = country.toLowerCase()
+  const isHongKong = countryLower.includes('hong kong') || country.includes('香港')
+  const isMacau = countryLower.includes('macau') || countryLower.includes('macao') || country.includes('澳门')
+  const isTaiwan = countryLower.includes('taiwan') || country.includes('台湾')
+  
+  if (isHongKong) {
+    country = '中国'
+    province = '香港'
+    city = '香港'
+  } else if (isMacau) {
+    country = '中国'
+    province = '澳门'
+    city = '澳门'
+  } else if (isTaiwan) {
+    country = '中国'
+    province = '台湾'
+    // 保留原有城市信息
+  }
   
   // 对于直辖市特殊处理
   const isDirectCity = ['北京', '上海', '天津', '重庆'].some(d => province.includes(d))
@@ -156,7 +177,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
   return {
     lat: fuzzy.lat,
     lng: fuzzy.lng,
-    country: addr.country || '未知',
+    country: country,
     province: province,
     city: city,
     // 不返回 district，保护隐私
@@ -316,6 +337,15 @@ export const COUNTRY_NAME_MAP: Record<string, string> = {
   'russia': '俄罗斯',
   "people's republic of china": '中国',
   '中华人民共和国': '中国',
+  // 港澳台属于中国
+  'hong kong': '中国',
+  'hongkong': '中国',
+  '香港': '中国',
+  'macau': '中国',
+  'macao': '中国',
+  '澳门': '中国',
+  'taiwan': '中国',
+  '台湾': '中国',
 }
 
 // 标准化省份名称（拼音转中文）

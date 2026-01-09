@@ -68,6 +68,7 @@ model KigurumiProfile {
   socialLinks  String?  // JSON: { x, douyin, xiaohongshu, bilibili }
   shareCode    String   @unique
   ossFolder    String   // OSS 文件夹路径
+  aiPersonality String?  // AI人格配置 JSON: { enabled, personality, tone, interests }
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

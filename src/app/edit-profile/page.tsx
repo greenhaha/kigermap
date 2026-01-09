@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { LocationInfo } from '@/lib/location'
 import { compressImage, getOSSConfig, uploadToOSS, generateUserFolder, validateImageFile, getPreviewUrl, revokePreviewUrl } from '@/lib/oss'
 import LocationPicker from '@/components/LocationPicker'
+import AIPersonalityConfig from '@/components/AIPersonalityConfig'
+import type { AIPersonality } from '@/types'
 
 export default function EditProfilePage() {
   const { data: session, status, update } = useSession()
@@ -25,6 +27,7 @@ export default function EditProfilePage() {
   const [success, setSuccess] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [hasExistingProfile, setHasExistingProfile] = useState(false)
+  const [aiPersonality, setAiPersonality] = useState<AIPersonality | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -38,6 +41,7 @@ export default function EditProfilePage() {
             setIntroduction(data.profile.introduction)
             setExistingPhotos(data.profile.photos || [])
             setLocation(data.profile.location)
+            setAiPersonality(data.profile.aiPersonality || null)
             setHasExistingProfile(true)
           }
         })
@@ -153,6 +157,7 @@ export default function EditProfilePage() {
           introduction,
           photos: photoUrls,
           location,
+          aiPersonality,
         }),
       })
 
@@ -332,6 +337,18 @@ export default function EditProfilePage() {
               <LocationPicker
                 value={location}
                 onChange={setLocation}
+              />
+            </div>
+
+            {/* AI 聊天配置 */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                AI 聊天设置
+                <span className="text-white/40 font-normal ml-2">（可选）</span>
+              </label>
+              <AIPersonalityConfig
+                value={aiPersonality}
+                onChange={setAiPersonality}
               />
             </div>
 
