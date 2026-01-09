@@ -36,11 +36,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string) => translate(key, locale)
 
-  // 避免 hydration 不匹配
-  if (!mounted) {
-    return <>{children}</>
-  }
-
+  // 始终提供 context，即使未 mounted 也使用默认值
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
       {children}

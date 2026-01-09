@@ -191,6 +191,13 @@ export default function HomePage() {
                 <span className="text-xs font-semibold text-gradient">{users.length}</span>
                 <span className="text-[10px] text-white/50">人</span>
               </div>
+              {/* 聚会活动 */}
+              <Link href="/events" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>聚会</span>
+              </Link>
               {/* 问题反馈 */}
               <Link href="/feedback" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
