@@ -114,12 +114,9 @@ export async function POST(request: NextRequest) {
     if (existing) {
       // 尝试更新 aiPersonality，如果字段不存在则忽略
       let updateData: any = { ...baseData }
-      try {
-        // 检查是否支持 aiPersonality 字段
-        if (aiPersonalityJson !== null) {
-          updateData.aiPersonality = aiPersonalityJson
-        }
-      } catch {}
+      if (aiPersonalityJson !== null) {
+        updateData.aiPersonality = aiPersonalityJson
+      }
 
       const profile = await prisma.kigurumiProfile.update({
         where: { accountId },

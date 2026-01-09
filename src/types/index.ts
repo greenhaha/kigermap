@@ -5,6 +5,20 @@ export interface SocialLinks {
   bilibili?: string // B站
 }
 
+export interface AIPersonality {
+  enabled: boolean      // 是否启用AI聊天
+  personality: string   // 性格描述
+  tone: string          // 说话语气
+  interests: string[]   // 兴趣爱好
+  customPrompt?: string // 自定义提示词
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+}
+
 export interface KigurumiUser {
   id: string
   cnName: string
@@ -18,6 +32,7 @@ export interface KigurumiUser {
     city?: string
   }
   socialLinks?: SocialLinks
+  aiPersonality?: AIPersonality
   createdAt: string
   shareCode: string
 }

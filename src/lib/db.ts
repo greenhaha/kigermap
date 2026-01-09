@@ -65,6 +65,7 @@ export function toKigurumiUser(profile: any) {
       city: profile.city || '',
     },
     socialLinks,
+    aiPersonality,
     createdAt: profile.createdAt?.toISOString?.() || profile.createdAt,
     shareCode: profile.shareCode || '',
   }

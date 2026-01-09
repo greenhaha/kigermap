@@ -358,7 +358,9 @@ export function isChineseProvince(province: string): boolean {
   if (!province) return false
   const normalized = normalizeProvince(province)
   return Object.keys(CHINA_REGIONS).includes(normalized)
-}// 获取城市列表
+}
+
+// 获取城市列表
 export function getCities(province: string): string[] {
   return CHINA_REGIONS[province] || []
 }
