@@ -4,7 +4,7 @@ export interface LocationInfo {
   country: string
   province?: string
   city?: string
-  district?: string  // 区/县
+  district?: string
 }
 
 // 获取用户位置（低精度，保护隐私）
@@ -15,21 +15,19 @@ export function getCurrentPosition(): Promise<GeolocationPosition> {
       return
     }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: false,  // 不需要高精度
+      enableHighAccuracy: false,
       timeout: 10000,
       maximumAge: 300000,
     })
   })
 }
 
-// IP 定位（不需要 HTTPS，精度较低但可作为备选）
+// IP 定位
 export async function getLocationByIP(): Promise<LocationInfo | null> {
-  // 创建超时控制
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒超时
+  const timeoutId = setTimeout(() => controller.abort(), 8000)
   
   try {
-    // 尝试多个 IP 定位服务
     const services = [
       'https://ipapi.co/json/',
       'https://ip-api.com/json/?lang=zh-CN',
@@ -37,14 +35,11 @@ export async function getLocationByIP(): Promise<LocationInfo | null> {
     
     for (const url of services) {
       try {
-        const res = await fetch(url, { 
-          signal: controller.signal,
-        })
+        const res = await fetch(url, { signal: controller.signal })
         if (!res.ok) continue
         
         const data = await res.json()
         
-        // ipapi.co 格式
         if (data.latitude && data.longitude) {
           clearTimeout(timeoutId)
           return {
@@ -56,7 +51,6 @@ export async function getLocationByIP(): Promise<LocationInfo | null> {
           }
         }
         
-        // ip-api.com 格式
         if (data.lat && data.lon) {
           clearTimeout(timeoutId)
           return {
@@ -80,9 +74,8 @@ export async function getLocationByIP(): Promise<LocationInfo | null> {
   }
 }
 
-// 智能获取位置：优先 GPS，失败则用 IP 定位
+// 智能获取位置
 export async function getSmartLocation(): Promise<LocationInfo | null> {
-  // 检查是否支持 GPS 且是安全上下文（HTTPS）
   const isSecureContext = typeof window !== 'undefined' && 
     (window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost')
   
@@ -96,56 +89,38 @@ export async function getSmartLocation(): Promise<LocationInfo | null> {
     }
   }
   
-  // 降级到 IP 定位
   const ipLocation = await getLocationByIP()
   if (ipLocation) {
     return ipLocation
   }
   
-  // 都失败了，返回 null
   return null
 }
 
-// 将坐标模糊化到县市级别（约 0.01 度 ≈ 1km）
+// 将坐标模糊化
 export function fuzzyCoordinates(lat: number, lng: number): { lat: number; lng: number } {
-  // 保留2位小数，大约精确到1公里范围
-  // 并添加随机偏移，进一步保护隐私
-  const offset = () => (Math.random() - 0.5) * 0.02  // ±1km 随机偏移
+  const offset = () => (Math.random() - 0.5) * 0.02
   return {
     lat: Math.round((lat + offset()) * 100) / 100,
     lng: Math.round((lng + offset()) * 100) / 100,
   }
 }
 
-// 反向地理编码 - 使用服务端API代理高德地图
-// 只返回地级市级别信息，去掉县级市以下所有信息
+// 反向地理编码
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationInfo> {
-  // 模糊化坐标
   const fuzzy = fuzzyCoordinates(lat, lng)
   
   try {
     const res = await fetch(`/api/geocode?lng=${lng}&lat=${lat}`)
     
     if (!res.ok) {
-      return {
-        lat: fuzzy.lat,
-        lng: fuzzy.lng,
-        country: '中国',
-        province: '',
-        city: '',
-      }
+      return { lat: fuzzy.lat, lng: fuzzy.lng, country: '中国', province: '', city: '' }
     }
     
     const data = await res.json()
     
     if (data.status !== '1' || !data.regeocode) {
-      return {
-        lat: fuzzy.lat,
-        lng: fuzzy.lng,
-        country: '中国',
-        province: '',
-        city: '',
-      }
+      return { lat: fuzzy.lat, lng: fuzzy.lng, country: '中国', province: '', city: '' }
     }
     
     const addr = data.regeocode.addressComponent || {}
@@ -154,32 +129,19 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
     let province = addr.province || ''
     let city = addr.city || addr.district || ''
     
-    // 直辖市特殊处理
     const directCities = ['北京', '上海', '天津', '重庆']
     if (directCities.some(d => province.includes(d)) && !city) {
       city = province
     }
 
-    return {
-      lat: fuzzy.lat,
-      lng: fuzzy.lng,
-      country,
-      province,
-      city,
-    }
+    return { lat: fuzzy.lat, lng: fuzzy.lng, country, province, city }
   } catch (e) {
     console.error('reverseGeocode error:', e)
-    return {
-      lat: fuzzy.lat,
-      lng: fuzzy.lng,
-      country: '中国',
-      province: '',
-      city: '',
-    }
+    return { lat: fuzzy.lat, lng: fuzzy.lng, country: '中国', province: '', city: '' }
   }
 }
 
-// 正向地理编码 - 使用服务端API代理高德地图
+// 正向地理编码
 export async function geocode(address: string): Promise<LocationInfo | null> {
   const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`)
   
@@ -191,7 +153,6 @@ export async function geocode(address: string): Promise<LocationInfo | null> {
   const result = data.geocodes[0]
   const [lng, lat] = result.location.split(',').map(Number)
   
-  // 获取详细地址信息
   return reverseGeocode(lat, lng)
 }
 
@@ -233,139 +194,62 @@ export const CHINA_REGIONS: Record<string, string[]> = {
   '澳门': ['澳门'],
 }
 
-// 常用国家列表
 export const COUNTRIES = [
-  '中国',
-  '日本',
-  '韩国',
-  '美国',
-  '加拿大',
-  '英国',
-  '法国',
-  '德国',
-  '澳大利亚',
-  '新西兰',
-  '新加坡',
-  '马来西亚',
-  '泰国',
-  '越南',
-  '菲律宾',
-  '印度尼西亚',
-  '俄罗斯',
-  '其他',
+  '中国', '日本', '韩国', '美国', '加拿大', '英国', '法国', '德国',
+  '澳大利亚', '新西兰', '新加坡', '马来西亚', '泰国', '越南', '菲律宾', '印度尼西亚', '俄罗斯', '其他',
 ]
 
-// 获取省份列表
 export function getProvinces(): string[] {
   return Object.keys(CHINA_REGIONS)
 }
 
-// 中国省份拼音到中文的映射
 export const PROVINCE_PINYIN_MAP: Record<string, string> = {
-  'beijing': '北京',
-  'tianjin': '天津',
-  'shanghai': '上海',
-  'chongqing': '重庆',
-  'hebei': '河北',
-  'shanxi': '山西',
-  'liaoning': '辽宁',
-  'jilin': '吉林',
-  'heilongjiang': '黑龙江',
-  'jiangsu': '江苏',
-  'zhejiang': '浙江',
-  'anhui': '安徽',
-  'fujian': '福建',
-  'jiangxi': '江西',
-  'shandong': '山东',
-  'henan': '河南',
-  'hubei': '湖北',
-  'hunan': '湖南',
-  'guangdong': '广东',
-  'hainan': '海南',
-  'sichuan': '四川',
-  'guizhou': '贵州',
-  'yunnan': '云南',
-  'shaanxi': '陕西',
-  'gansu': '甘肃',
-  'qinghai': '青海',
-  'taiwan': '台湾',
-  'neimenggu': '内蒙古',
-  'inner mongolia': '内蒙古',
-  'guangxi': '广西',
-  'xizang': '西藏',
-  'tibet': '西藏',
-  'ningxia': '宁夏',
-  'xinjiang': '新疆',
-  'hongkong': '香港',
-  'hong kong': '香港',
-  'macau': '澳门',
-  'macao': '澳门',
-  'aomen': '澳门',
-  'xianggang': '香港',
+  'beijing': '北京', 'tianjin': '天津', 'shanghai': '上海', 'chongqing': '重庆',
+  'hebei': '河北', 'shanxi': '山西', 'liaoning': '辽宁', 'jilin': '吉林',
+  'heilongjiang': '黑龙江', 'jiangsu': '江苏', 'zhejiang': '浙江', 'anhui': '安徽',
+  'fujian': '福建', 'jiangxi': '江西', 'shandong': '山东', 'henan': '河南',
+  'hubei': '湖北', 'hunan': '湖南', 'guangdong': '广东', 'hainan': '海南',
+  'sichuan': '四川', 'guizhou': '贵州', 'yunnan': '云南', 'shaanxi': '陕西',
+  'gansu': '甘肃', 'qinghai': '青海', 'taiwan': '台湾', 'neimenggu': '内蒙古',
+  'inner mongolia': '内蒙古', 'guangxi': '广西', 'xizang': '西藏', 'tibet': '西藏',
+  'ningxia': '宁夏', 'xinjiang': '新疆', 'hongkong': '香港', 'hong kong': '香港',
+  'macau': '澳门', 'macao': '澳门', 'aomen': '澳门', 'xianggang': '香港',
 }
 
-// 国家名称映射（英文/其他语言 -> 中文）
 export const COUNTRY_NAME_MAP: Record<string, string> = {
-  'china': '中国',
-  'japan': '日本',
-  'korea': '韩国',
-  'south korea': '韩国',
-  'united states': '美国',
-  'usa': '美国',
-  'canada': '加拿大',
-  'united kingdom': '英国',
-  'uk': '英国',
-  'france': '法国',
-  'germany': '德国',
-  'australia': '澳大利亚',
-  'new zealand': '新西兰',
-  'singapore': '新加坡',
-  'malaysia': '马来西亚',
-  'thailand': '泰国',
-  'vietnam': '越南',
-  'philippines': '菲律宾',
-  'indonesia': '印度尼西亚',
-  'russia': '俄罗斯',
-  "people's republic of china": '中国',
-  '中华人民共和国': '中国',
-  // 港澳台属于中国
-  'hong kong': '中国',
-  'hongkong': '中国',
-  '香港': '中国',
-  'macau': '中国',
-  'macao': '中国',
-  '澳门': '中国',
-  'taiwan': '中国',
-  '台湾': '中国',
+  'china': '中国', 'japan': '日本', 'korea': '韩国', 'south korea': '韩国',
+  'united states': '美国', 'usa': '美国', 'canada': '加拿大',
+  'united kingdom': '英国', 'uk': '英国', 'france': '法国', 'germany': '德国',
+  'australia': '澳大利亚', 'new zealand': '新西兰', 'singapore': '新加坡',
+  'malaysia': '马来西亚', 'thailand': '泰国', 'vietnam': '越南',
+  'philippines': '菲律宾', 'indonesia': '印度尼西亚', 'russia': '俄罗斯',
+  "people's republic of china": '中国', '中华人民共和国': '中国',
+  'hong kong': '中国', 'hongkong': '中国', '香港': '中国',
+  'macau': '中国', 'macao': '中国', '澳门': '中国', 'taiwan': '中国', '台湾': '中国',
 }
 
-// 标准化省份名称（拼音转中文）
 export function normalizeProvince(province: string): string {
   if (!province) return ''
   const lower = province.toLowerCase().trim()
   return PROVINCE_PINYIN_MAP[lower] || province
 }
 
-// 标准化国家名称
 export function normalizeCountry(country: string): string {
   if (!country) return '中国'
   const lower = country.toLowerCase().trim()
   return COUNTRY_NAME_MAP[lower] || country
 }
 
-// 判断省份是否属于中国
 export function isChineseProvince(province: string): boolean {
   if (!province) return false
   const normalized = normalizeProvince(province)
   return Object.keys(CHINA_REGIONS).includes(normalized)
 }
 
-// 获取城市列表
 export function getCities(province: string): string[] {
   return CHINA_REGIONS[province] || []
 }
 
-// 根据省市获取大致坐标（用于手动选择时）
 export async function getLocationByRegion(
   country: string,
   province?: string,
@@ -376,6 +260,5 @@ export async function getLocationByRegion(
   if (country === '中国' && province) {
     address = `中国${province}${city || ''}`
   }
-  
   return geocode(address)
 }
