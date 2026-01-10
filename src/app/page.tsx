@@ -93,7 +93,8 @@ export default function HomePage() {
 
   const isNewMember = (user: KigurumiUser) => {
     if (!user.createdAt) return false
-    return new Date(user.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000
+    // 加入超过1天则不再显示新人标志
+    return new Date(user.createdAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
   }
 
   const visibleUsers = useMemo(() => {

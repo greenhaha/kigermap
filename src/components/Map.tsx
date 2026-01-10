@@ -214,21 +214,22 @@ const Map = forwardRef<MapRef, MapProps>(({
 
     if (users.length === 0) return
 
-    const createIcon = (photo: string, isSelected: boolean = false) => {
-      const size = isSelected ? 56 : 44
+    const createIcon = (photo: string, isSelected: boolean = false, zIndexOffset: number = 0) => {
+      const size = isSelected ? 56 : 40
       return L.divIcon({
         className: '',
         html: `<div style="
           width: ${size}px;
           height: ${size}px;
           border-radius: 50%;
-          border: 3px solid ${isSelected ? '#EC4899' : '#8B5CF6'};
-          box-shadow: 0 0 ${isSelected ? '25px' : '15px'} rgba(${isSelected ? '236, 72, 153' : '139, 92, 246'}, 0.6);
+          border: ${isSelected ? '4px' : '3px'} solid ${isSelected ? '#EC4899' : '#8B5CF6'};
+          box-shadow: 0 0 ${isSelected ? '25px' : '12px'} rgba(${isSelected ? '236, 72, 153' : '139, 92, 246'}, ${isSelected ? '0.8' : '0.5'});
           overflow: hidden;
           background: #1E293B;
+          ${isSelected ? 'transform: scale(1.1);' : ''}
         ">
           <img src="${photo}" style="width: 100%; height: 100%; object-fit: cover;" 
-            onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px\\'>🎭</div>'" />
+            onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px\\'>🎭</div>'" />
         </div>`,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
@@ -245,13 +246,17 @@ const Map = forwardRef<MapRef, MapProps>(({
         hash = hash & hash
       }
       
-      // 使用螺旋分布 + 随机偏移，让分布更均匀
-      const angle = (Math.abs(hash) % 360) * (Math.PI / 180)  // 基于hash的角度
-      const radiusBase = 0.3  // 基础半径约 30km
+      // 使用螺旋分布，让用户均匀分散
+      const goldenAngle = 137.5 * (Math.PI / 180)  // 黄金角度，产生均匀分布
+      const baseAngle = (Math.abs(hash) % 360) * (Math.PI / 180)
+      const angle = baseAngle + index * goldenAngle
       
-      // 根据组内人数动态调整半径，人越多分布越广
-      const radiusMultiplier = Math.min(1 + totalInGroup * 0.1, 2.5)
-      const radius = radiusBase * radiusMultiplier * (0.5 + Math.abs(Math.sin(hash)) * 0.5)
+      // 基础半径，根据组内人数动态调整
+      // 增大偏移量，确保头像不重叠
+      const radiusBase = 0.025  // 约 2.5km，增大基础半径
+      const radiusMultiplier = Math.sqrt(totalInGroup) * 1.2  // 增大乘数
+      const indexFactor = 0.6 + (index / Math.max(totalInGroup, 1)) * 0.6  // 外圈用户偏移更大
+      const radius = radiusBase * Math.max(radiusMultiplier, 1) * indexFactor
       
       return {
         latOffset: Math.sin(angle) * radius,
@@ -259,12 +264,12 @@ const Map = forwardRef<MapRef, MapProps>(({
       }
     }
 
-    // 按位置分组用户（使用较低精度的坐标作为分组键）
+    // 按位置分组用户（使用更高精度的坐标作为分组键）
     const locationGroups = new globalThis.Map<string, typeof users>()
     users.forEach(user => {
       if (!user.location?.lat || !user.location?.lng) return
-      // 使用 0.2 度精度分组（约 20km 范围）
-      const groupKey = `${Math.round(user.location.lat * 5) / 5},${Math.round(user.location.lng * 5) / 5}`
+      // 使用 0.03 度精度分组（约 3km 范围），更精确地检测重叠
+      const groupKey = `${Math.round(user.location.lat * 33) / 33},${Math.round(user.location.lng * 33) / 33}`
       if (!locationGroups.has(groupKey)) {
         locationGroups.set(groupKey, [])
       }
@@ -292,8 +297,10 @@ const Map = forwardRef<MapRef, MapProps>(({
         // 保存用户的偏移坐标
         userCoordsRef.current.set(user.id, { lat, lng })
         
+        // 选中的标记使用更高的 zIndexOffset
         const marker = L.marker([lat, lng], {
           icon: createIcon(user.photos[0] || '', isSelected),
+          zIndexOffset: isSelected ? 10000 : 0,  // 选中的标记置顶
         })
 
         marker.bindPopup(createPopupContent(user), {
@@ -304,7 +311,19 @@ const Map = forwardRef<MapRef, MapProps>(({
           minWidth: 280,
         })
 
-        marker.on('click', () => onUserClick?.(user))
+        // 点击时临时置顶显示
+        marker.on('click', () => {
+          // 将当前标记置顶
+          marker.setZIndexOffset(10000)
+          onUserClick?.(user)
+        })
+        
+        // popup 关闭时恢复层级（如果不是选中状态）
+        marker.on('popupclose', () => {
+          if (selectedUser?.id !== user.id) {
+            marker.setZIndexOffset(0)
+          }
+        })
         
         if (isSelected) {
           // 选中的用户单独显示在地图上，不加入聚合，使用偏移后的位置
