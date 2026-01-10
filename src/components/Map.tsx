@@ -237,7 +237,7 @@ const Map = forwardRef<MapRef, MapProps>(({
     }
 
     // 基于用户ID生成稳定的随机偏移（同一用户每次偏移相同）
-    // 使用螺旋分布算法，让用户均匀分散在区域内
+    // 使用向日葵种子分布算法（Fermat spiral），产生最均匀的圆形分布
     const getStableOffset = (userId: string, index: number, totalInGroup: number) => {
       // 使用简单的哈希算法生成稳定的伪随机数
       let hash = 0
@@ -246,17 +246,22 @@ const Map = forwardRef<MapRef, MapProps>(({
         hash = hash & hash
       }
       
-      // 使用螺旋分布，让用户均匀分散
-      const goldenAngle = 137.5 * (Math.PI / 180)  // 黄金角度，产生均匀分布
-      const baseAngle = (Math.abs(hash) % 360) * (Math.PI / 180)
+      // 向日葵种子分布算法 - 产生最均匀的圆形分布
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5))  // 约 137.5°
+      const baseAngle = (Math.abs(hash) % 1000) / 1000 * Math.PI * 2  // 基于ID的初始角度
       const angle = baseAngle + index * goldenAngle
       
-      // 基础半径，根据组内人数动态调整
-      // 增大偏移量，确保头像不重叠
-      const radiusBase = 0.025  // 约 2.5km，增大基础半径
-      const radiusMultiplier = Math.sqrt(totalInGroup) * 1.2  // 增大乘数
-      const indexFactor = 0.6 + (index / Math.max(totalInGroup, 1)) * 0.6  // 外圈用户偏移更大
-      const radius = radiusBase * Math.max(radiusMultiplier, 1) * indexFactor
+      // 半径随索引增加而增大，形成螺旋分布
+      // 使用平方根使点在圆内均匀分布
+      const normalizedIndex = (index + 1) / (totalInGroup + 1)
+      const radiusFactor = Math.sqrt(normalizedIndex)
+      
+      // 基础半径根据组内人数动态调整
+      // 在最大缩放级别(10)下，每个头像约40px，需要足够间距
+      // 0.05度约等于5.5km，在zoom=10时约100px
+      const baseRadius = 0.04  // 基础半径
+      const groupSizeMultiplier = Math.sqrt(totalInGroup) * 0.8  // 人数越多，分布范围越大
+      const radius = baseRadius * Math.max(groupSizeMultiplier, 1) * radiusFactor
       
       return {
         latOffset: Math.sin(angle) * radius,
@@ -264,12 +269,12 @@ const Map = forwardRef<MapRef, MapProps>(({
       }
     }
 
-    // 按位置分组用户（使用更高精度的坐标作为分组键）
+    // 按位置分组用户（使用更大的范围检测重叠）
     const locationGroups = new globalThis.Map<string, typeof users>()
     users.forEach(user => {
       if (!user.location?.lat || !user.location?.lng) return
-      // 使用 0.03 度精度分组（约 3km 范围），更精确地检测重叠
-      const groupKey = `${Math.round(user.location.lat * 33) / 33},${Math.round(user.location.lng * 33) / 33}`
+      // 使用 0.1 度精度分组（约 10km 范围），确保检测到所有可能重叠的用户
+      const groupKey = `${Math.round(user.location.lat * 10) / 10},${Math.round(user.location.lng * 10) / 10}`
       if (!locationGroups.has(groupKey)) {
         locationGroups.set(groupKey, [])
       }

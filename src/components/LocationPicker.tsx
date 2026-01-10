@@ -461,7 +461,7 @@ export default function LocationPicker({ value, onChange, error }: LocationPicke
                 ✕
               </button>
             </div>
-            <div ref={mapRef} className="w-full h-80 sm:h-96" style={{ background: '#1E293B' }} />
+            <div ref={mapRef} className="location-picker-map w-full" style={{ background: '#1E293B' }} />
             <div className="p-4 space-y-3">
               {tempLocation ? (
                 <div className="glass rounded-xl p-3 flex items-center gap-3">

@@ -77,6 +77,30 @@ export default function UserMenu() {
             </div>
             
             <div className="p-2">
+              {/* 移动端导航链接 */}
+              <div className="sm:hidden border-b border-white/10 pb-2 mb-2">
+                <Link
+                  href="/events"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>聚会活动</span>
+                </Link>
+                <Link
+                  href="/feedback"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 transition"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  <span>问题反馈</span>
+                </Link>
+              </div>
+
               {profileData.hasProfile && profileData.shareCode ? (
                 <button
                   onClick={handleProfileClick}

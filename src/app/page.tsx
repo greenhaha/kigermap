@@ -167,6 +167,8 @@ export default function HomePage() {
 
   const filterText = currentFilter.province || null
 
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+
   return (
     <div className="h-screen flex flex-col relative overflow-hidden">
       <div className="bg-animated" />
@@ -176,11 +178,20 @@ export default function HomePage() {
         <div className="px-3 sm:px-4 py-2.5 sm:py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* 移动端菜单按钮 */}
+              <button 
+                onClick={() => setShowMobileMenu(true)}
+                className="sm:hidden w-8 h-8 rounded-lg glass flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-base sm:text-lg">
                 🎭
               </div>
               <h1 className="text-base sm:text-lg font-bold text-gradient leading-tight">Kigurumi Map</h1>
-              {/* 注册人数 */}
+              {/* 注册人数 - PC端 */}
               <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 glass rounded-lg">
                 <span className="text-sm font-semibold text-gradient">{users.length}</span>
                 <span className="text-xs text-white/50">位成员</span>
@@ -192,17 +203,28 @@ export default function HomePage() {
                 <span className="text-xs font-semibold text-gradient">{users.length}</span>
                 <span className="text-[10px] text-white/50">人</span>
               </div>
-              {/* 聚会活动 */}
+              {/* PC端导航链接 */}
               <Link href="/events" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <span>聚会</span>
               </Link>
-              {/* 问题反馈 */}
-              <Link href="/feedback" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
+              <Link href="/about" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>关于</span>
+              </Link>
+              <Link href="/faq" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>FAQ</span>
+              </Link>
+              <Link href="/feedback" className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-xs">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
                 <span>反馈</span>
               </Link>
@@ -226,6 +248,85 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Drawer */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-[100] sm:hidden" onClick={() => setShowMobileMenu(false)}>
+          <div className="absolute inset-0 bg-dark/60 backdrop-blur-sm" />
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-64 glass-dark border-r border-white/10 animate-slide-in-left"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-lg">
+                  🎭
+                </div>
+                <span className="font-bold text-gradient">菜单</span>
+              </div>
+              <button 
+                onClick={() => setShowMobileMenu(false)}
+                className="w-8 h-8 rounded-full glass flex items-center justify-center text-white/60 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Drawer Content */}
+            <div className="p-4 space-y-2">
+              <Link 
+                href="/about" 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>关于我们</span>
+              </Link>
+              <Link 
+                href="/faq" 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>常见问题</span>
+              </Link>
+              <Link 
+                href="/events" 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>聚会活动</span>
+              </Link>
+              <Link 
+                href="/feedback" 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                <span>问题反馈</span>
+              </Link>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+              <div className="glass rounded-xl p-3 text-center">
+                <div className="text-xl font-bold text-gradient">{users.length}</div>
+                <div className="text-xs text-white/50">位成员已加入</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main */}
       <main className="flex-1 flex flex-col lg:flex-row min-h-0 relative">
